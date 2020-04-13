@@ -6,7 +6,8 @@ import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
 
 import Home from "./containers/Home";
 import Login from "./containers/Login";
-import Streams from "./containers/Streams";
+import Pool from "./containers/Pool";
+import Stream from "./containers/Stream";
 import Signup from "./containers/Signup";
 import Settings from "./containers/Settings";
 import NotFound from "./containers/NotFound";
@@ -26,8 +27,11 @@ export default function Routes() {
       <AuthenticatedRoute exact path="/settings">
         <Settings />
       </AuthenticatedRoute>
-      <AuthenticatedRoute exact path="/streams/:id">
-        <Streams />
+      <AuthenticatedRoute exact path="/pools/:poolId">
+        <Pool />
+      </AuthenticatedRoute>
+      <AuthenticatedRoute exact path="/pools/:poolId/streams/:streamId">
+        <Stream />
       </AuthenticatedRoute>
       {/* Finally, catch all unmatched routes */}
       <Route>

@@ -1,0 +1,12 @@
+.Stream {
+}
+
+.VideoStream {
+    width: 640px;
+    height: 480px;
+}
+
+.VideoStream div {
+    width: 640px;
+    height: 480px;
+}

@@ -1,12 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Amplify } from 'aws-amplify';
-import { BrowserRouter as Router } from 'react-router-dom';
+import {Amplify} from 'aws-amplify';
+import {BrowserRouter as Router} from 'react-router-dom';
 import './index.css';
 import App from './App';
 import config from './config';
-import { initSentry } from './libs/errorLib';
+import {initSentry} from './libs/errorLib';
 import * as serviceWorker from './serviceWorker';
+import {AuthContextProvider} from "./libs/AuthContext";
+import {OpenTokContextProvider} from "./libs/OpenTokContext";
 
 initSentry();
 
@@ -26,13 +28,13 @@ Amplify.configure({
   API: {
     endpoints: [
       {
-        name: "streams",
-        endpoint: config.apiGateway.URL,
+        name: "pools",
+        endpoint: config.apiGateway.URL + "/pools",
         region: config.apiGateway.REGION
       },
       {
-        name: "streaming",
-        endpoint: config.apiGateway.URL + "/streaming",
+        name: "user",
+        endpoint: config.apiGateway.URL + "/user",
         region: config.apiGateway.REGION
       },
     ]
@@ -41,7 +43,11 @@ Amplify.configure({
 
 ReactDOM.render(
   <Router>
-    <App />
+    <AuthContextProvider>
+      <OpenTokContextProvider>
+        <App/>
+      </OpenTokContextProvider>
+    </AuthContextProvider>
   </Router>,
   document.getElementById('root')
 );

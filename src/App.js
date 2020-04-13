@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Auth } from "aws-amplify";
-import { Link, useHistory } from "react-router-dom";
-import { Nav, Navbar, NavItem } from "react-bootstrap";
-import { LinkContainer } from "react-router-bootstrap";
+import React, {useEffect, useState} from "react";
+import {Auth} from "aws-amplify";
+import {Link, useHistory} from "react-router-dom";
+import {Nav, Navbar, NavItem} from "react-bootstrap";
+import {LinkContainer} from "react-router-bootstrap";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { AppContext } from "./libs/contextLib";
-import { onError } from "./libs/errorLib";
+import {onError} from "./libs/errorLib";
 import Routes from "./Routes";
 import "./App.css";
-import StreamingStatus from "./components/StreamingStatus";
+import {useAuthContext} from "./libs/AuthContext";
 
 function App() {
   const history = useHistory();
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [isAuthenticated, userHasAuthenticated] = useState(false);
+  const {login, logout, setCognitoUserSession} = useAuthContext();
 
   useEffect(() => {
     onLoad();
@@ -21,10 +21,11 @@ function App() {
 
   async function onLoad() {
     try {
-      await Auth.currentSession();
+      const cognitoUserSession = await Auth.currentSession();
       userHasAuthenticated(true);
-    }
-    catch(e) {
+      login(true);
+      setCognitoUserSession(cognitoUserSession.idToken.payload);
+    } catch (e) {
       if (e !== 'No current user') {
         onError(e);
       }
@@ -36,6 +37,7 @@ function App() {
   async function handleLogout() {
     await Auth.signOut();
 
+    logout();
     userHasAuthenticated(false);
 
     history.push("/login");
@@ -49,15 +51,12 @@ function App() {
             <Navbar.Brand>
               <Link to="/">Streaming Playground</Link>
             </Navbar.Brand>
-            <Navbar.Toggle />
+            <Navbar.Toggle/>
           </Navbar.Header>
           <Navbar.Collapse>
             <Nav pullRight>
               {isAuthenticated ? (
                 <>
-                  <NavItem>
-                    <StreamingStatus/>
-                  </NavItem>
                   <LinkContainer to="/settings">
                     <NavItem>Settings</NavItem>
                   </LinkContainer>
@@ -77,13 +76,11 @@ function App() {
           </Navbar.Collapse>
         </Navbar>
         <ErrorBoundary>
-          <AppContext.Provider value={{ isAuthenticated, userHasAuthenticated }}>
-            <Routes />
-          </AppContext.Provider>
+          <Routes/>
         </ErrorBoundary>
       </div>
     )
   );
 }
 
-export default App;
+export default App

@@ -30,3 +30,7 @@
 .Home .lander div a:first-child {
   margin-right: 20px;
 }
+
+.Home .icon-button {
+  float: right;
+}

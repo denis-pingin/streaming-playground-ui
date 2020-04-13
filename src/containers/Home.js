@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { API } from "aws-amplify";
-import { Link } from "react-router-dom";
-import { LinkContainer } from "react-router-bootstrap";
-import { PageHeader, ListGroup, ListGroupItem } from "react-bootstrap";
-import { useAppContext } from "../libs/contextLib";
-import { onError } from "../libs/errorLib";
+import React, {useContext, useEffect, useState} from "react";
+import {API} from "aws-amplify";
+import {Link, useHistory} from "react-router-dom";
+import {LinkContainer} from "react-router-bootstrap";
+import {ListGroup, ListGroupItem, PageHeader} from "react-bootstrap";
+import {onError} from "../libs/errorLib";
 import "./Home.css";
-
+import LoaderButton from "../components/LoaderButton";
+import {IconContext} from "react-icons";
+import {FaPlus} from "react-icons/all";
+import {useAuthContext} from "../libs/AuthContext";
 
 export default function Home() {
-  const [streams, setStreams] = useState([]);
-  const { isAuthenticated } = useAppContext();
+  const history = useHistory();
+  const [pools, setPools] = useState([]);
+  const { isAuthenticated } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -20,8 +23,8 @@ export default function Home() {
       }
 
       try {
-        const streams = await loadStreams();
-        setStreams(streams);
+        const pools = await loadPools();
+        setPools(pools);
       } catch (e) {
         onError(e);
       }
@@ -32,24 +35,36 @@ export default function Home() {
     onLoad();
   }, [isAuthenticated]);
 
-  function loadStreams() {
-    return API.get("streams", "/streams");
+  async function createPool() {
+    return API.post("pools", "/", {
+      body: {
+        name: "My awesome pool"
+      }
+    });
   }
 
-  function renderStreamsList(streams) {
-    return [{}].concat(streams).map((stream, i) =>
-      i !== 0 ? (
-        <LinkContainer key={stream.streamId} to={`/streams/${stream.streamId}`}>
-          <ListGroupItem header={stream.streamId}>
-            {"Created: " + new Date(stream.createdAt).toLocaleString()}
-          </ListGroupItem>
-        </LinkContainer>
-      ) : (
-        <LinkContainer key="new" to="/streams/new">
-          <ListGroupItem>
-            <h4>
-              <b>{"\uFF0B"}</b> Create a new stream
-            </h4>
+  async function loadPools() {
+    return API.get("pools", "/");
+  }
+
+  async function handleCreatePool(event) {
+    event.preventDefault()
+    setIsLoading(true);
+    try {
+      const pool = await createPool();
+      history.push(`/pools/${pool.poolId}`);
+    } catch (e) {
+      onError(e);
+      setIsLoading(false);
+    }
+  }
+
+  function renderPoolsList(pools) {
+    return pools.map((pool, i) =>
+      (
+        <LinkContainer key={pool.poolId} to={`/pools/${pool.poolId}`}>
+          <ListGroupItem header={pool.name}>
+            {"Created: " + new Date(pool.createdAt).toLocaleString()}
           </ListGroupItem>
         </LinkContainer>
       )
@@ -73,20 +88,30 @@ export default function Home() {
     );
   }
 
-  function renderStreams() {
+  function renderPools() {
     return (
-      <div className="streams">
-        <PageHeader>Your Streams</PageHeader>
-        <ListGroup>
-          {!isLoading && renderStreamsList(streams)}
-        </ListGroup>
+      <div className="pools">
+        <IconContext.Provider value={{size: "2em"}}>
+          <PageHeader>
+            <span>Pools</span>
+            <LoaderButton
+              className="icon-button"
+              onClick={handleCreatePool}
+              disabled={isLoading}>
+              <FaPlus/>
+            </LoaderButton>
+          </PageHeader>
+          <ListGroup>
+            {!isLoading && renderPoolsList(pools)}
+          </ListGroup>
+        </IconContext.Provider>
       </div>
     );
   }
 
   return (
     <div className="Home">
-      {isAuthenticated ? renderStreams() : renderLander()}
+      {isAuthenticated ? renderPools() : renderLander()}
     </div>
   );
 }

@@ -1,7 +1,12 @@
 import { useContext, createContext } from "react";
 
-export const AppContext = createContext(null);
+export const OpenTokSessionContext = createContext(null);
+export const OpenTokPublisherContext = createContext(null);
 
-export function useAppContext() {
-  return useContext(AppContext);
+export function useOpenTokSessionContext() {
+  return useContext(OpenTokSessionContext);
+}
+
+export function useOpenTokPublisherContext() {
+  return useContext(OpenTokPublisherContext);
 }

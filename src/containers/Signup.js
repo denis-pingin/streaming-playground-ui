@@ -1,20 +1,16 @@
-import React, { useState } from "react";
-import { Auth } from "aws-amplify";
-import { useHistory } from "react-router-dom";
-import {
-  HelpBlock,
-  FormGroup,
-  FormControl,
-  ControlLabel
-} from "react-bootstrap";
+import React, {useState} from "react";
+import {Auth} from "aws-amplify";
+import {useHistory} from "react-router-dom";
+import {ControlLabel, FormControl, FormGroup, HelpBlock} from "react-bootstrap";
 import LoaderButton from "../components/LoaderButton";
-import { useAppContext } from "../libs/contextLib";
-import { useFormFields } from "../libs/hooksLib";
-import { onError } from "../libs/errorLib";
+import {useFormFields} from "../libs/hooksLib";
+import {onError} from "../libs/errorLib";
 import "./Signup.css";
+import {useAuthContext} from "../libs/AuthContext";
 
 export default function Signup() {
   const [fields, handleFieldChange] = useFormFields({
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -22,11 +18,12 @@ export default function Signup() {
   });
   const history = useHistory();
   const [newUser, setNewUser] = useState(null);
-  const { userHasAuthenticated } = useAppContext();
+  const {login} = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
   function validateForm() {
     return (
+      fields.name.length > 0 &&
       fields.email.length > 0 &&
       fields.password.length > 0 &&
       fields.password === fields.confirmPassword
@@ -46,6 +43,9 @@ export default function Signup() {
       const newUser = await Auth.signUp({
         username: fields.email,
         password: fields.password,
+        attributes: {
+          name: fields.name
+        }
       });
       setIsLoading(false);
       setNewUser(newUser);
@@ -64,7 +64,8 @@ export default function Signup() {
       await Auth.confirmSignUp(fields.email, fields.confirmationCode);
       await Auth.signIn(fields.email, fields.password);
 
-      userHasAuthenticated(true);
+      login()
+
       history.push("/");
     } catch (e) {
       onError(e);
@@ -101,6 +102,15 @@ export default function Signup() {
   function renderForm() {
     return (
       <form onSubmit={handleSubmit}>
+        <FormGroup controlId="name" bsSize="large">
+          <ControlLabel>Name</ControlLabel>
+          <FormControl
+            autoFocus
+            type="text"
+            value={fields.name}
+            onChange={handleFieldChange}
+          />
+        </FormGroup>
         <FormGroup controlId="email" bsSize="large">
           <ControlLabel>Email</ControlLabel>
           <FormControl

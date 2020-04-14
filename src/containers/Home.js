@@ -1,19 +1,30 @@
-import React, {useContext, useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {API} from "aws-amplify";
-import {Link, useHistory} from "react-router-dom";
-import {LinkContainer} from "react-router-bootstrap";
-import {ListGroup, ListGroupItem, PageHeader} from "react-bootstrap";
+import {Link as RouterLink, useHistory} from "react-router-dom";
 import {onError} from "../libs/errorLib";
-import "./Home.css";
-import LoaderButton from "../components/LoaderButton";
-import {IconContext} from "react-icons";
-import {FaPlus} from "react-icons/all";
 import {useAuthContext} from "../libs/AuthContext";
+import Typography from "@material-ui/core/Typography";
+import Grid from "@material-ui/core/Grid";
+import Container from "@material-ui/core/Container";
+import {Button, ButtonGroup} from "@material-ui/core";
+import Fab from "@material-ui/core/Fab";
+import AddIcon from '@material-ui/icons/Add';
+import makeStyles from "@material-ui/core/styles/makeStyles";
+import Card from "@material-ui/core/Card";
+import CardContent from "@material-ui/core/CardContent";
+import Link from "@material-ui/core/Link";
+
+const useStyles = makeStyles((theme) => ({
+  card: {
+    minWidth: 275,
+  }
+}));
 
 export default function Home() {
+  const classes = useStyles();
   const history = useHistory();
   const [pools, setPools] = useState([]);
-  const { isAuthenticated } = useAuthContext();
+  const {isAuthenticated} = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,7 +49,7 @@ export default function Home() {
   async function createPool() {
     return API.post("pools", "/", {
       body: {
-        name: "My awesome pool"
+        name: "My pool"
       }
     });
   }
@@ -62,50 +73,64 @@ export default function Home() {
   function renderPoolsList(pools) {
     return pools.map((pool, i) =>
       (
-        <LinkContainer key={pool.poolId} to={`/pools/${pool.poolId}`}>
-          <ListGroupItem header={pool.name}>
-            {"Created: " + new Date(pool.createdAt).toLocaleString()}
-          </ListGroupItem>
-        </LinkContainer>
+        <Grid item key={pool.poolId}>
+          <Card className={classes.card}>
+            <Link component={RouterLink} to={`/pools/${pool.poolId}`} underline="none">
+              <CardContent>
+                <Typography color="textPrimary" variant="h5" gutterBottom>
+                  {pool.name}
+                </Typography>
+                <Typography variant="h6" color="textSecondary">
+                  {"Created: " + new Date(pool.createdAt).toLocaleString()}
+                </Typography>
+              </CardContent>
+            </Link>
+          </Card>
+        </Grid>
       )
     );
   }
 
   function renderLander() {
     return (
-      <div className="lander">
-        <h1>Streaming playground</h1>
-        <p>Let's play!</p>
-        <div>
-          <Link to="/login" className="btn btn-info btn-lg">
-            Login
-          </Link>
-          <Link to="/signup" className="btn btn-success btn-lg">
-            Signup
-          </Link>
-        </div>
-      </div>
+      <Container component="main" maxWidth="sm">
+        <Typography component="h1" variant="h4" align="center">
+          Streaming Playground
+        </Typography>
+        <Typography component="h1" variant="h6" align="center">
+          Let's play!
+        </Typography>
+        <ButtonGroup variant="outlined" fullWidth={true}>
+          <Button component={RouterLink} to="/login">Login</Button>
+          <Button component={RouterLink} to="/signup">Sign Up</Button>
+        </ButtonGroup>
+      </Container>
     );
   }
 
   function renderPools() {
     return (
-      <div className="pools">
-        <IconContext.Provider value={{size: "2em"}}>
-          <PageHeader>
-            <span>Pools</span>
-            <LoaderButton
-              className="icon-button"
-              onClick={handleCreatePool}
-              disabled={isLoading}>
-              <FaPlus/>
-            </LoaderButton>
-          </PageHeader>
-          <ListGroup>
-            {!isLoading && renderPoolsList(pools)}
-          </ListGroup>
-        </IconContext.Provider>
-      </div>
+      <Container component="main" maxWidth="xl">
+        <Grid container spacing={3}>
+          <Grid item>
+            <Fab color="primary"
+                 aria-label="add"
+                 size="medium"
+                 onClick={handleCreatePool}
+                 disabled={isLoading}>
+              <AddIcon/>
+            </Fab>
+          </Grid>
+          <Grid item>
+            <Typography variant="h3">
+              Pools
+            </Typography>
+          </Grid>
+        </Grid>
+        {pools && <Grid container spacing={3}>
+          {renderPoolsList(pools)}
+        </Grid>}
+      </Container>
     );
   }
 

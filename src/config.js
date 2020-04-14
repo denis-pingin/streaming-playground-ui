@@ -13,6 +13,9 @@ const dev = {
     USER_POOL_ID: "eu-central-1_sJQv7BsQg",
     APP_CLIENT_ID: "7gq6p4ekjes2u7adaka47do07p",
     IDENTITY_POOL_ID: "eu-central-1:491e207a-da5b-446e-a964-e80d24c373fc"
+  },
+  websocket: {
+    URL: "wss://3lny6x8mr4.execute-api.eu-central-1.amazonaws.com/dev"
   }
 };
 

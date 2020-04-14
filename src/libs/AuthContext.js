@@ -3,14 +3,14 @@ import React, {useContext, useState} from 'react';
 const AuthContext = React.createContext([
   {
     isAuthenticated: false,
-    cognitoUserSession: null
+    userInfo: null
   }, () => {
   }]);
 
 const AuthContextProvider = (props) => {
   const [authContext, setAuthContext] = useState({
     isAuthenticated: false,
-    cognitoUserSession: null
+    userInfo: null
   });
   return (
     <AuthContext.Provider value={[authContext, setAuthContext]}>
@@ -30,16 +30,16 @@ const useAuthContext = () => {
     setAuthContext(authContext => ({...authContext, isAuthenticated: false}));
   }
 
-  function setCognitoUserSession(cognitoUserSession) {
-    setAuthContext(authContext => ({...authContext, cognitoUserSession: cognitoUserSession}));
+  function setUserInfo(userInfo) {
+    setAuthContext(authContext => ({...authContext, userInfo: userInfo}));
   }
 
   return {
     isAuthenticated: authContext.isAuthenticated,
-    cognitoUserSession: authContext.cognitoUserSession,
+    userInfo: authContext.userInfo,
     login,
     logout,
-    setCognitoUserSession
+    setUserInfo
   }
 };
 

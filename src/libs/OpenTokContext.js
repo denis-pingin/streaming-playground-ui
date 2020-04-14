@@ -45,18 +45,18 @@ const useOpenTokContext = () => {
         if (openTokContext.session.isConnected()) {
           console.log("Session is already connected");
           callback({
-            eventType: "sessionConnected",
+            type: "sessionConnected",
             session: openTokContext.session
           });
+          return;
         }
-        return;
       }
     }
     const session = openTokStartSession(apiKey, sessionId, token, callback)
     setSession(session);
   }
 
-  function startPublishing(session) {
+  function startPublishing(session, callback) {
     if (openTokContext.publisher) {
       console.log("Already publishing");
       return;
@@ -65,9 +65,11 @@ const useOpenTokContext = () => {
     publisher.on({
       streamCreated: function (event) {
         console.log("Publisher started streaming", event);
+        callback(event);
       },
       streamDestroyed: function (event) {
         console.log("Publisher stopped streaming. Reason: " + event.reason);
+        callback(event);
       }
     });
     setPublisher(publisher);
@@ -80,8 +82,8 @@ const useOpenTokContext = () => {
     }
   }
 
-  function subscribeToStream(session, stream) {
-    openTokSubscribeToStream(session, stream);
+  function subscribeToStream(elementId, session, stream) {
+    openTokSubscribeToStream(elementId, session, stream);
   }
 
   return {

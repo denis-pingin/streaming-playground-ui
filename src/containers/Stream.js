@@ -1,9 +1,10 @@
 import React, {useEffect, useState} from "react";
 import {API} from "aws-amplify";
-import {useHistory, useParams} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {PageHeader} from "react-bootstrap";
 import {logError, onError} from "../libs/errorLib";
 import "./Stream.css";
+
 const OT = require('@opentok/client');
 
 export default function Stream() {

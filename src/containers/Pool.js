@@ -1,24 +1,42 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {API} from "aws-amplify";
-import {useHistory, useParams} from "react-router-dom";
-import {ListGroup, ListGroupItem, PageHeader} from "react-bootstrap";
-import LoaderButton from "../components/LoaderButton";
+import {Link as RouterLink, useHistory, useParams} from "react-router-dom";
 import {onError} from "../libs/errorLib";
-import "./Pool.css";
-import {LinkContainer} from "react-router-bootstrap";
-import StreamingStatus from "../components/StreamingStatus";
-import {IconContext} from "react-icons";
-import {FaTrashAlt} from "react-icons/all";
 import StreamView from "../components/StreamView";
+import Container from "@material-ui/core/Container";
+import makeStyles from "@material-ui/core/styles/makeStyles";
+import Typography from "@material-ui/core/Typography";
+import Grid from "@material-ui/core/Grid";
+import Link from "@material-ui/core/Link";
+import Fab from "@material-ui/core/Fab";
+import DeleteIcon from "@material-ui/icons/Delete";
+import Card from "@material-ui/core/Card";
+import CardContent from "@material-ui/core/CardContent";
+import StreamingStatus from "../components/StreamingStatus";
+import {useAuthContext} from "../libs/AuthContext";
+import config from "../config";
+
+const useStyles = makeStyles((theme) => ({
+  card: {
+    minWidth: 275,
+  }
+}));
 
 export default function Pool() {
+  const classes = useStyles();
   const {poolId} = useParams();
   const history = useHistory();
+  const {userInfo} = useAuthContext();
   const [streamingStatus, setStreamingStatus] = useState(null);
   const [pool, setPool] = useState(null);
-  const [streams, setStreams] = useState(null);
+  const [myStreams, setMyStreams] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMyPool, setIsMyPool] = useState(false);
+  const [websocket, setWebsocket] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const isClosingRef = useRef(isClosing);
 
   function loadUserProfile() {
     return API.get("user", `/profile`);
@@ -32,22 +50,70 @@ export default function Pool() {
     return API.get("pools", `/${poolId}/streams`);
   }
 
+  function connectWebsocket(poolId) {
+    let ws = new WebSocket(`${config.websocket.URL}?poolId=${poolId}`);
+    ws.onopen = () => {
+      console.log('Websocket connected');
+    }
+    ws.onmessage = event => {
+      console.log('Websocket message:', event);
+      loadStreams().then((streams) => {
+        console.log("Loaded streams:", streams);
+        setMyStreams(streams)
+      });
+    }
+    ws.onclose = () => {
+      console.log('Websocket disconnected');
+      // automatically try to reconnect on connection loss
+      if (!isClosingRef.current) {
+        console.log('Reconnecting websocket');
+        connectWebsocket(poolId);
+      }
+    }
+    setWebsocket(ws);
+  }
+
   useEffect(() => {
+    function checkPoolOwnership(pool, userInfo) {
+      const ownPool = userInfo && pool && pool.ownerUserId === userInfo.id;
+      setIsMyPool(ownPool);
+    }
+
     async function onLoad() {
+      if (isInitialized) {
+        checkPoolOwnership(pool, userInfo);
+        return;
+      }
+      setIsInitialized(true);
+
+      console.log("Pool load starting");
       try {
-        const streamingStatus = (await loadUserProfile()).streamingStatus;
-        setStreamingStatus(streamingStatus);
+        setStreamingStatus((await loadUserProfile()).streamingStatus);
+
         const pool = await loadPool();
+        console.log("Got pool:", pool);
         setPool(pool);
-        const streams = await loadStreams();
-        setStreams(streams);
+        checkPoolOwnership(pool, userInfo);
+
+        connectWebsocket(pool.poolId);
+
+        setMyStreams(await loadStreams());
+        console.log("Pool load done");
       } catch (e) {
         onError(e);
       }
     }
 
     onLoad();
-  }, [poolId]);
+    return function cleanup() {
+      if (websocket) {
+        console.log("Closing websocket");
+        isClosingRef.current = true;
+        websocket.close();
+        setWebsocket(null);
+      }
+    };
+  }, [userInfo, pool, websocket, isClosing]);
 
   function deletePool() {
     return API.del("pools", `/${poolId}`);
@@ -76,46 +142,61 @@ export default function Pool() {
   }
 
   function renderStreamsList(streams) {
-    return streams.map((stream, i) =>
-      (
-        <div key={stream.streamId}>
-          <LinkContainer to={`/pools/${poolId}/streams/${stream.streamId}`}>
-            <ListGroupItem header={stream.name}>
-              {"Created: " + new Date(stream.createdAt).toLocaleString()}
-            </ListGroupItem>
-          </LinkContainer>
-          <StreamView size="small"/>
-        </div>
-      )
-    );
+    return streams
+      .filter((stream) => {
+        return stream.streamId !== streamingStatus.streamId;
+      })
+      .map((stream) => {
+        return (
+          <Grid item key={stream.streamId}>
+            <Card className={classes.card}>
+              <Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">
+                <CardContent>
+                  <Typography color="textPrimary" variant="h5" gutterBottom>
+                    {stream.name}
+                  </Typography>
+                  <Typography variant="h6" color="textSecondary">
+                    {"Created: " + new Date(stream.createdAt).toLocaleString()}
+                  </Typography>
+                  <StreamView id={stream.openTokStreamId} size="small"/>
+                </CardContent>
+              </Link>
+            </Card>
+          </Grid>
+        )
+      });
   }
 
   async function streamingStatusUpdated(streamingStatus) {
-    console.log(streamingStatus);
+    console.log("Got updated streaming status:", streamingStatus);
     setStreamingStatus(streamingStatus)
-    const streams = await loadStreams();
-    console.log(streams);
-    setStreams(streams);
   }
 
   return (
-    <div className="Pool">
-      <IconContext.Provider value={{color: "red", size: "2em"}}>
-        {pool &&
-        <PageHeader>
-          <span>{pool.name}</span>
-          <LoaderButton
-            className={"icon-button"}
-            onClick={handleDelete}
-            disabled={isLoading}>
-            <FaTrashAlt/>
-          </LoaderButton>
-          <StreamingStatus pool={pool} streamingStatus={streamingStatus} streamingStatusCallback={streamingStatusUpdated}/>
-        </PageHeader>}
-        <ListGroup>
-          {!isLoading && streams && renderStreamsList(streams)}
-        </ListGroup>
-      </IconContext.Provider>
-    </div>
-  );
+    pool &&
+    <Container component="main" maxWidth="xl">
+      <Grid container spacing={3}>
+        {isMyPool &&
+        <Grid item>
+          <Fab color="primary"
+               aria-label="delete"
+               size="medium"
+               onClick={handleDelete}
+               disabled={isLoading}>
+            <DeleteIcon/>
+          </Fab>
+        </Grid>}
+        <Grid item>
+          <StreamingStatus pool={pool} streamingStatus={streamingStatus}
+                           streamingStatusCallback={streamingStatusUpdated}/>
+        </Grid>
+        <Grid item>
+          <Typography variant="h3">
+            {pool.name}
+          </Typography>
+        </Grid>
+      </Grid>
+      {myStreams && renderStreamsList(myStreams)}
+    </Container>
+  )
 }

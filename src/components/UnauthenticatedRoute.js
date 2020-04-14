@@ -1,5 +1,5 @@
-import React, {useContext} from "react";
-import { Route, Redirect } from "react-router-dom";
+import React from "react";
+import {Redirect, Route} from "react-router-dom";
 import {useAuthContext} from "../libs/AuthContext";
 
 function querystring(name, url = window.location.href) {

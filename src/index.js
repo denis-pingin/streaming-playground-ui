@@ -9,6 +9,10 @@ import {initSentry} from './libs/errorLib';
 import * as serviceWorker from './serviceWorker';
 import {AuthContextProvider} from "./libs/AuthContext";
 import {OpenTokContextProvider} from "./libs/OpenTokContext";
+import theme from './theme';
+import {MuiThemeProvider} from "@material-ui/core";
+import "typeface-roboto";
+import CssBaseline from "@material-ui/core/CssBaseline";
 
 initSentry();
 
@@ -42,13 +46,16 @@ Amplify.configure({
 });
 
 ReactDOM.render(
-  <Router>
-    <AuthContextProvider>
-      <OpenTokContextProvider>
-        <App/>
-      </OpenTokContextProvider>
-    </AuthContextProvider>
-  </Router>,
+  <MuiThemeProvider theme={theme}>
+    <CssBaseline/>
+    <Router>
+      <AuthContextProvider>
+        <OpenTokContextProvider>
+          <App/>
+        </OpenTokContextProvider>
+      </AuthContextProvider>
+    </Router>
+  </MuiThemeProvider>,
   document.getElementById('root')
 );
 

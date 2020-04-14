@@ -1,4 +1,5 @@
 import {logError} from "./errorLib";
+
 const OT = require('@opentok/client');
 
 function handleError(error) {
@@ -13,25 +14,21 @@ export function openTokStartSession(apiKey, sessionId, token, callback) {
 
   session.on('streamCreated', function (event) {
     console.log("Stream created:", event)
-    callback({
-      eventType: "streamCreated",
-      session: session,
-      event: event
-    });
+    callback(event);
   });
 
   session.connect(token, function (error) {
     if (error) {
       console.log(error.message);
       callback({
-        eventType: "sessionConnectionError",
+        type: "sessionConnectionError",
         session: session,
         error: error
       });
     } else {
       console.log("Session connected");
       callback({
-        eventType: "sessionConnected",
+        type: "sessionConnected",
         session: session
       });
       // You have connected to the session. You could publish a stream now.
@@ -45,8 +42,8 @@ export function openTokDisconnectFromSession(session) {
   session.disconnect();
 }
 
-export function openTokSubscribeToStream(session, stream) {
-  session.subscribe(stream, 'subscriber', {
+export function openTokSubscribeToStream(elementId, session, stream) {
+  session.subscribe(stream, elementId, {
     insertMode: 'append'
   }, handleError);
   console.log("Subscribed to stream:", stream);

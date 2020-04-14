@@ -1,4 +1,4 @@
-import { Storage } from "aws-amplify";
+import {Storage} from "aws-amplify";
 
 export async function s3Upload(file) {
   const filename = `${Date.now()}-${file.name}`;

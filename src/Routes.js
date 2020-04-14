@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Switch } from "react-router-dom";
+import {Route, Switch} from "react-router-dom";
 
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
@@ -33,7 +33,6 @@ export default function Routes() {
       <AuthenticatedRoute exact path="/pools/:poolId/streams/:streamId">
         <Stream />
       </AuthenticatedRoute>
-      {/* Finally, catch all unmatched routes */}
       <Route>
         <NotFound />
       </Route>

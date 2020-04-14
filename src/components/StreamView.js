@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {useOpenTokContext} from "../libs/OpenTokContext";
+import {useOpenTokContext} from "../contexts/OpenTokContext";
 import {logError} from "../libs/errorLib";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 

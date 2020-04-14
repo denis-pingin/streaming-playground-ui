@@ -1,5 +1,5 @@
 import React, {useContext, useRef, useState} from 'react';
-import {logError} from "./errorLib";
+import {logError} from "../libs/errorLib";
 const OT = require('@opentok/client');
 
 function handleError(error) {

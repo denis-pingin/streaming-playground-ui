@@ -1,21 +1,21 @@
 import React, {useEffect, useRef, useState} from "react";
 import {API} from "aws-amplify";
-import {Link as RouterLink, useHistory, useParams} from "react-router-dom";
+import {useHistory, useParams} from "react-router-dom";
 import {onError} from "../libs/errorLib";
 import StreamView from "../components/StreamView";
 import Container from "@material-ui/core/Container";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
-import Link from "@material-ui/core/Link";
 import Fab from "@material-ui/core/Fab";
 import DeleteIcon from "@material-ui/icons/Delete";
 import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import StreamingStatus from "../components/StreamingStatus";
-import {useAuthContext} from "../libs/AuthContext";
-import {useOpenTokContext} from "../libs/OpenTokContext";
-import {useWebsocketContext} from "../libs/WebsocketContext";
+import {useAuthContext} from "../contexts/AuthContext";
+import {useOpenTokContext} from "../contexts/OpenTokContext";
+import {useWebsocketContext} from "../contexts/WebsocketContext";
+import ConfirmationDialog from "../components/ConfirmationDialog";
 
 const useStyles = makeStyles((theme) => ({
   card: {
@@ -40,6 +40,7 @@ export default function Pool() {
   const isOpenTokSessionConnected = useRef(false);
   const [isOpenTokSessionConnectedState, setIsOpenTokSessionConnectedState] = useState(false);
   const [openTokStreams, setOpenTokStreams] = useState({});
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   function getIsInPool() {
     return isInPool.current;
@@ -84,11 +85,9 @@ export default function Pool() {
           console.log("New OpenTok stream created:", event);
           openTokStreams[event.stream.id] = event.stream;
           setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: event.stream}));
-          // openTokSubscribeToStream(event.stream.id, event.stream);
           break;
         case "streamDestroyed":
           console.log("New OpenTok stream destroyed:", event);
-          // delete openTokStreams[event.stream.id];
           setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: null}));
           break;
       }
@@ -211,24 +210,20 @@ export default function Pool() {
   }
 
   async function handleDelete(event) {
-    event.preventDefault();
+    setShowDeleteConfirmation(true);
+  }
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this pool?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setIsDeleting(true);
-
-    try {
-      await deletePool();
-      history.push("/");
-    } catch (e) {
-      onError(e);
-      setIsDeleting(false);
+  async function handleDeleteConfirmation(result) {
+    setShowDeleteConfirmation(false);
+    if (result) {
+      setIsDeleting(true);
+      try {
+        await deletePool();
+        history.push("/");
+      } catch (e) {
+        onError(e);
+        setIsDeleting(false);
+      }
     }
   }
 
@@ -239,20 +234,20 @@ export default function Pool() {
       })
       .map((stream) => {
         return (
-          <Grid item key={stream.streamId}>
+          <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
             <Card className={classes.card}>
               {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
-                <CardContent>
-                  <Typography color="textPrimary" variant="h5" gutterBottom>
-                    {stream.name}
-                  </Typography>
-                  <Typography variant="h6" color="textSecondary">
-                    {"Created: " + new Date(stream.createdAt).toLocaleString()}
-                  </Typography>
-                  {console.log("Rendering:", stream.openTokStreamId, stream.openTokStreamId && openTokStreams[stream.openTokStreamId])}
-                  {stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
-                  <StreamView id={stream.openTokStreamId} size="small" stream={openTokStreams[stream.openTokStreamId]}/>}
-                </CardContent>
+              <CardContent>
+                <Typography component="h1" variant="h5" color="textPrimary" gutterBottom>
+                  {stream.name}
+                </Typography>
+                <Typography component="h1" variant="h6" color="textSecondary">
+                  {"Created: " + new Date(stream.createdAt).toLocaleString()}
+                </Typography>
+                {console.log("Rendering:", stream.openTokStreamId, stream.openTokStreamId && openTokStreams[stream.openTokStreamId])}
+                {stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
+                <StreamView id={stream.openTokStreamId} size="small" stream={openTokStreams[stream.openTokStreamId]}/>}
+              </CardContent>
               {/*</Link>*/}
             </Card>
           </Grid>
@@ -265,15 +260,23 @@ export default function Pool() {
     <Container component="main" maxWidth="xl">
       <Grid container spacing={3}>
         {isMyPool &&
-        <Grid item>
-          <Fab color="primary"
-               aria-label="delete"
-               size="medium"
-               onClick={handleDelete}
-               disabled={isLoading}>
-            <DeleteIcon/>
-          </Fab>
-        </Grid>}
+        <>
+          {console.log(showDeleteConfirmation)}
+          {showDeleteConfirmation &&
+          <ConfirmationDialog
+            title="Delete pool?"
+            text={`Are you sure you want to delete pool ${pool.name}?`}
+            result={handleDeleteConfirmation}/>}
+          <Grid item>
+            <Fab color="primary"
+                 aria-label="delete"
+                 size="medium"
+                 onClick={handleDelete}
+                 disabled={isLoading}>
+              <DeleteIcon/>
+            </Fab>
+          </Grid>
+        </>}
         {isOpenTokSessionConnectedState && pool && streamingStatus && <Grid item>
           <StreamingStatus
             pool={pool}
@@ -281,7 +284,7 @@ export default function Pool() {
             streamingStatusCallback={updateStreamingStatus}/>
         </Grid>}
         <Grid item>
-          <Typography variant="h3">
+          <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
             {pool.name}
           </Typography>
         </Grid>

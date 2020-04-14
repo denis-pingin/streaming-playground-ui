@@ -1,9 +1,8 @@
 import React, {useState} from "react";
-import {ControlLabel, FormControl, FormGroup} from "react-bootstrap";
 import {CardElement, injectStripe} from "react-stripe-elements";
-import LoaderButton from "./LoaderButton";
 import {useFormFields} from "../libs/hooksLib";
 import "./BillingForm.css";
+import Button from "@material-ui/core/Button";
 
 function BillingForm({ isLoading, onSubmit, ...props }) {
   const [fields, handleFieldChange] = useFormFields({
@@ -37,43 +36,6 @@ function BillingForm({ isLoading, onSubmit, ...props }) {
 
   return (
     <form className="BillingForm" onSubmit={handleSubmitClick}>
-      <FormGroup bsSize="large" controlId="storage">
-        <ControlLabel>Storage</ControlLabel>
-        <FormControl
-          min="0"
-          type="number"
-          value={fields.storage}
-          onChange={handleFieldChange}
-          placeholder="Number of streams to store"
-        />
-      </FormGroup>
-      <hr />
-      <FormGroup bsSize="large" controlId="name">
-        <ControlLabel>Cardholder&apos;s name</ControlLabel>
-        <FormControl
-          type="text"
-          value={fields.name}
-          onChange={handleFieldChange}
-          placeholder="Name on the card"
-        />
-      </FormGroup>
-      <ControlLabel>Credit Card Info</ControlLabel>
-      <CardElement
-        className="card-field"
-        onChange={e => setIsCardComplete(e.complete)}
-        style={{
-          base: { fontSize: "18px", fontFamily: '"Open Sans", sans-serif' }
-        }}
-      />
-      <LoaderButton
-        block
-        type="submit"
-        bsSize="large"
-        isLoading={isLoading}
-        disabled={!validateForm()}
-      >
-        Purchase
-      </LoaderButton>
     </form>
   );
 }

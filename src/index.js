@@ -7,13 +7,13 @@ import App from './App';
 import config from './config';
 import {initSentry} from './libs/errorLib';
 import * as serviceWorker from './serviceWorker';
-import {AuthContextProvider} from "./libs/AuthContext";
-import {OpenTokContextProvider} from "./libs/OpenTokContext";
+import {AuthContextProvider} from "./contexts/AuthContext";
+import {OpenTokContextProvider} from "./contexts/OpenTokContext";
 import theme from './theme';
 import {MuiThemeProvider} from "@material-ui/core";
 import "typeface-roboto";
 import CssBaseline from "@material-ui/core/CssBaseline";
-import {WebsocketContextProvider} from "./libs/WebsocketContext";
+import {WebsocketContextProvider} from "./contexts/WebsocketContext";
 
 initSentry();
 

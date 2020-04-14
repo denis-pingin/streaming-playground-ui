@@ -1,12 +1,20 @@
 import React from "react";
 import {logError} from "../libs/errorLib";
-import "./ErrorBoundary.css";
+import withStyles from "@material-ui/core/styles/withStyles";
+import PropTypes from 'prop-types';
 
-export default class ErrorBoundary extends React.Component {
-  state = { hasError: false };
+const styles = theme => ({
+  root: {
+    "padding-top": "100px",
+    "text-align": "center"
+  },
+});
+
+class ErrorBoundary extends React.Component {
+  state = {hasError: false};
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return {hasError: true};
   }
 
   componentDidCatch(error, errorInfo) {
@@ -14,8 +22,9 @@ export default class ErrorBoundary extends React.Component {
   }
 
   render() {
+    const {classes} = this.props;
     return this.state.hasError ? (
-      <div className="ErrorBoundary">
+      <div className={classes.root}>
         <h3>Sorry there was a problem loading this page</h3>
       </div>
     ) : (
@@ -23,3 +32,9 @@ export default class ErrorBoundary extends React.Component {
     );
   }
 }
+
+ErrorBoundary.propTypes = {
+  classes: PropTypes.object.isRequired,
+};
+
+export default withStyles(styles)(ErrorBoundary);

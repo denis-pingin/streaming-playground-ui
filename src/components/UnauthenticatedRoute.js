@@ -1,6 +1,6 @@
 import React from "react";
 import {Redirect, Route} from "react-router-dom";
-import {useAuthContext} from "../libs/AuthContext";
+import {useAuthContext} from "../contexts/AuthContext";
 
 function querystring(name, url = window.location.href) {
   name = name.replace(/[[]]/g, "\\$&");

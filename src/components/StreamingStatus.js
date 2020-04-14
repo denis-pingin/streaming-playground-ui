@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
 import {logError, onError} from "../libs/errorLib";
 import {API} from "aws-amplify";
-import {useAuthContext} from "../libs/AuthContext";
-import {useOpenTokContext} from "../libs/OpenTokContext";
+import {useAuthContext} from "../contexts/AuthContext";
+import {useOpenTokContext} from "../contexts/OpenTokContext";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Fab from "@material-ui/core/Fab";
 import VideocamIcon from "@material-ui/icons/Videocam";

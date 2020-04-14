@@ -1,37 +1,30 @@
 import React, {useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {
-  AppBar,
-  Box,
-  Button,
-  ButtonGroup,
-  Divider,
-  IconButton,
-  Menu,
-  MenuItem,
-  Toolbar,
-  Typography
-} from "@material-ui/core";
+import {AppBar, Divider, IconButton, Menu, MenuItem, Toolbar, Typography} from "@material-ui/core";
 import UserAvatar from "../components/UserAvatar";
-import {useAuthContext} from "../libs/AuthContext";
+import {useAuthContext} from "../contexts/AuthContext";
 import Link from "@material-ui/core/Link";
 import makeStyles from "@material-ui/core/styles/makeStyles";
+import MenuIcon from "@material-ui/icons/Menu";
 
 const useStyles = makeStyles((theme) => ({
+  menuButton: {
+    marginRight: theme.spacing(2),
+  },
   title: {
+    flexGrow: 1,
     "user-select": "none"
-  }
+  },
 }));
-
 
 export default function Bar({logout, ...props}) {
   const classes = useStyles();
-  const {isAuthenticated, userInfo} = useAuthContext();
+  const {isAuthenticated} = useAuthContext();
   const [anchorElement, setAnchorElement] = useState(null);
   const [menuItems, setMenuItems] = useState([
     {
       name: "Profile",
-      to: userInfo ? `/user/${userInfo.id}` : null
+      to: "/profile"
     },
     {
       name: "Settings",
@@ -53,15 +46,16 @@ export default function Bar({logout, ...props}) {
   }
 
   return (
-    <AppBar color="primary" position="static">
+    <AppBar color="primary" position="sticky">
       <Toolbar>
-        <Box display="flex" flexGrow={1}>
-          <Typography variant="h6">
-            <Link component={RouterLink} to="/" underline="none" color="textPrimary" className={classes.title}>
-              Streaming Playground
-            </Link>
-          </Typography>
-        </Box>
+        <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="menu">
+          <MenuIcon/>
+        </IconButton>
+        <Typography variant="h5" color="textPrimary" className={classes.title}>
+          <Link component={RouterLink} to="/" underline="none" color="textPrimary" className={classes.title}>
+            Streaming Playground
+          </Link>
+        </Typography>
 
         {isAuthenticated && (
           <>
@@ -118,13 +112,6 @@ export default function Bar({logout, ...props}) {
               })}
             </Menu>
           </>
-        )}
-
-        {!isAuthenticated && (
-          <ButtonGroup variant="outlined">
-            <Button component={RouterLink} to="/login">Login</Button>
-            <Button component={RouterLink} to="/signup">Sign Up</Button>
-          </ButtonGroup>
         )}
       </Toolbar>
     </AppBar>

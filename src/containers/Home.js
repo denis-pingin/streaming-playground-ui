@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {API} from "aws-amplify";
 import {Link as RouterLink, useHistory} from "react-router-dom";
 import {onError} from "../libs/errorLib";
-import {useAuthContext} from "../libs/AuthContext";
+import {useAuthContext} from "../contexts/AuthContext";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -13,19 +13,20 @@ import makeStyles from "@material-ui/core/styles/makeStyles";
 import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import Link from "@material-ui/core/Link";
+import NewPoolDialog from "../components/NewPoolDialog";
 
 const useStyles = makeStyles((theme) => ({
   card: {
-    minWidth: 275,
+    height: "100%"
   }
 }));
 
 export default function Home() {
   const classes = useStyles();
-  const history = useHistory();
   const [pools, setPools] = useState([]);
   const {isAuthenticated} = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
+  const [newPoolDialogOpen, setNewPoolDialogOpen] = useState(false);
 
   useEffect(() => {
     async function onLoad() {
@@ -46,41 +47,25 @@ export default function Home() {
     onLoad();
   }, [isAuthenticated]);
 
-  async function createPool() {
-    return API.post("pools", "/", {
-      body: {
-        name: "My pool"
-      }
-    });
-  }
-
   async function loadPools() {
     return API.get("pools", "/");
   }
 
   async function handleCreatePool(event) {
-    event.preventDefault()
-    setIsLoading(true);
-    try {
-      const pool = await createPool();
-      history.push(`/pools/${pool.poolId}`);
-    } catch (e) {
-      onError(e);
-      setIsLoading(false);
-    }
+    setNewPoolDialogOpen(true);
   }
 
   function renderPoolsList(pools) {
     return pools.map((pool, i) =>
       (
-        <Grid item key={pool.poolId}>
+        <Grid item key={pool.poolId} xs={12} sm={6} md={4} lg={3} xl={2}>
           <Card className={classes.card}>
             <Link component={RouterLink} to={`/pools/${pool.poolId}`} underline="none">
               <CardContent>
-                <Typography color="textPrimary" variant="h5" gutterBottom>
+                <Typography component="h1" variant="h5" color="textPrimary" gutterBottom>
                   {pool.name}
                 </Typography>
-                <Typography variant="h6" color="textSecondary">
+                <Typography component="h1" variant="h6" color="textSecondary">
                   {"Created: " + new Date(pool.createdAt).toLocaleString()}
                 </Typography>
               </CardContent>
@@ -94,10 +79,10 @@ export default function Home() {
   function renderLander() {
     return (
       <Container component="main" maxWidth="sm">
-        <Typography component="h1" variant="h4" align="center">
+        <Typography component="h1" variant="h4" align="center" color="textPrimary">
           Streaming Playground
         </Typography>
-        <Typography component="h1" variant="h6" align="center">
+        <Typography component="h1" variant="h6" align="center" color="textSecondary">
           Let's play!
         </Typography>
         <ButtonGroup variant="outlined" fullWidth={true}>
@@ -111,6 +96,7 @@ export default function Home() {
   function renderPools() {
     return (
       <Container component="main" maxWidth="xl">
+        {newPoolDialogOpen && <NewPoolDialog open={newPoolDialogOpen} openStateChanged={setNewPoolDialogOpen}/>}
         <Grid container spacing={3}>
           <Grid item>
             <Fab color="primary"
@@ -122,12 +108,12 @@ export default function Home() {
             </Fab>
           </Grid>
           <Grid item>
-            <Typography variant="h3">
+            <Typography component="h1" variant="h3" color="textPrimary">
               Pools
             </Typography>
           </Grid>
         </Grid>
-        {pools && <Grid container spacing={3}>
+        {pools && <Grid container spacing={3} alignItems="stretch">
           {renderPoolsList(pools)}
         </Grid>}
       </Container>

@@ -9,11 +9,9 @@
     "@sentry/browser": "^5.15.4",
     "aws-amplify": "^3.0.7",
     "react": "^16.13.1",
-    "react-bootstrap": "^0.33.1",
     "react-context-hook": "^2.1.0",
     "react-dom": "^16.13.1",
     "react-icons": "^3.9.0",
-    "react-router-bootstrap": "^0.25.0",
     "react-router-dom": "^5.1.2",
     "react-scripts": "3.4.1",
     "react-stripe-elements": "^6.1.1",
@@ -25,6 +23,8 @@
     "start-https": "BROWSER=false HTTPS=true react-scripts start --no-cache --inspect-brk --verbose=false --runInBand",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "deploy": "./sync-s3.sh",
+    "all": "npm run build && npm run deploy",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

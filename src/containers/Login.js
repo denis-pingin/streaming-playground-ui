@@ -2,7 +2,7 @@ import React, {useState} from "react";
 import {Auth} from "aws-amplify";
 import {useFormFields} from "../libs/hooksLib";
 import {onError} from "../libs/errorLib";
-import {useAuthContext} from "../libs/AuthContext";
+import {useAuthContext} from "../contexts/AuthContext";
 import Container from "@material-ui/core/Container";
 import Avatar from "@material-ui/core/Avatar";
 import Typography from "@material-ui/core/Typography";
@@ -69,7 +69,7 @@ export default function Login() {
         <Avatar className={classes.avatar}>
           <LockOutlinedIcon/>
         </Avatar>
-        <Typography component="h1" variant="h5">
+        <Typography component="h1" variant="h5" color="textPrimary">
           Sign in
         </Typography>
         <form className={classes.form} noValidate onSubmit={handleSubmit}>

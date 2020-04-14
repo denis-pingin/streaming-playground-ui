@@ -1,4 +1,5 @@
 import React, {useContext, useState} from 'react';
+import {Auth} from "aws-amplify";
 
 const AuthContext = React.createContext([
   {
@@ -22,24 +23,28 @@ const AuthContextProvider = (props) => {
 const useAuthContext = () => {
   const [authContext, setAuthContext] = useContext(AuthContext);
 
-  function login() {
-    setAuthContext(authContext => ({...authContext, isAuthenticated: true}));
+  async function login() {
+    const userInfo = await Auth.currentUserInfo();
+    console.log("Logged in userInfo:", userInfo);
+    setAuthContext({
+      isAuthenticated: true,
+      userInfo: userInfo
+    });
+    return userInfo;
   }
 
   function logout() {
-    setAuthContext(authContext => ({...authContext, isAuthenticated: false}));
-  }
-
-  function setUserInfo(userInfo) {
-    setAuthContext(authContext => ({...authContext, userInfo: userInfo}));
+    setAuthContext({
+      isAuthenticated: false,
+      userInfo: null
+    });
   }
 
   return {
     isAuthenticated: authContext.isAuthenticated,
     userInfo: authContext.userInfo,
     login,
-    logout,
-    setUserInfo
+    logout
   }
 };
 

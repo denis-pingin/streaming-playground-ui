@@ -13,6 +13,7 @@ import theme from './theme';
 import {MuiThemeProvider} from "@material-ui/core";
 import "typeface-roboto";
 import CssBaseline from "@material-ui/core/CssBaseline";
+import {WebsocketContextProvider} from "./libs/WebsocketContext";
 
 initSentry();
 
@@ -51,7 +52,9 @@ ReactDOM.render(
     <Router>
       <AuthContextProvider>
         <OpenTokContextProvider>
-          <App/>
+          <WebsocketContextProvider>
+            <App/>
+          </WebsocketContextProvider>
         </OpenTokContextProvider>
       </AuthContextProvider>
     </Router>

@@ -14,11 +14,12 @@ import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import StreamingStatus from "../components/StreamingStatus";
 import {useAuthContext} from "../libs/AuthContext";
-import config from "../config";
+import {useOpenTokContext} from "../libs/OpenTokContext";
+import {useWebsocketContext} from "../libs/WebsocketContext";
 
 const useStyles = makeStyles((theme) => ({
   card: {
-    minWidth: 275,
+    minWidth: 250,
   }
 }));
 
@@ -27,16 +28,37 @@ export default function Pool() {
   const {poolId} = useParams();
   const history = useHistory();
   const {userInfo} = useAuthContext();
+  const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff,} = useWebsocketContext();
+  const {openTokGetSession, openTokStartSession, openTokStopSession, openTokSubscribeToStream} = useOpenTokContext();
   const [streamingStatus, setStreamingStatus] = useState(null);
   const [pool, setPool] = useState(null);
-  const [myStreams, setMyStreams] = useState(null);
+  const [streams, setStreams] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMyPool, setIsMyPool] = useState(false);
-  const [websocket, setWebsocket] = useState(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const isClosingRef = useRef(isClosing);
+  const isInPool = useRef(false);
+  const isOpenTokSessionConnected = useRef(false);
+  const [isOpenTokSessionConnectedState, setIsOpenTokSessionConnectedState] = useState(false);
+  const [openTokStreams, setOpenTokStreams] = useState({});
+
+  function getIsInPool() {
+    return isInPool.current;
+  }
+
+  function setIsInPool(value) {
+    isInPool.current = value;
+  }
+
+  function getIsOpenTokSessionConnected() {
+    console.log("Current session connected state:", isOpenTokSessionConnected.current);
+    return isOpenTokSessionConnected.current;
+  }
+
+  function setIsOpenTokSessionConnected(value) {
+    console.log("Setting session connected state");
+    isOpenTokSessionConnected.current = value;
+    setIsOpenTokSessionConnectedState(value);
+  }
 
   function loadUserProfile() {
     return API.get("user", `/profile`);
@@ -50,27 +72,51 @@ export default function Pool() {
     return API.get("pools", `/${poolId}/streams`);
   }
 
-  function connectWebsocket(poolId) {
-    let ws = new WebSocket(`${config.websocket.URL}?poolId=${poolId}`);
-    ws.onopen = () => {
-      console.log('Websocket connected');
-    }
-    ws.onmessage = event => {
-      console.log('Websocket message:', event);
-      loadStreams().then((streams) => {
-        console.log("Loaded streams:", streams);
-        setMyStreams(streams)
-      });
-    }
-    ws.onclose = () => {
-      console.log('Websocket disconnected');
-      // automatically try to reconnect on connection loss
-      if (!isClosingRef.current) {
-        console.log('Reconnecting websocket');
-        connectWebsocket(poolId);
+  function startOpenTokSession(openTokSessionConfig, openTokToken) {
+    openTokStartSession(openTokSessionConfig.apiKey, openTokSessionConfig.sessionId, openTokToken, function (event) {
+      console.log("Received OpenTok event:", event);
+      switch (event.type) {
+        case "sessionConnected":
+          console.log("OpenTok session connected:", event);
+          setIsOpenTokSessionConnected(true);
+          break;
+        case "streamCreated":
+          console.log("New OpenTok stream created:", event);
+          openTokStreams[event.stream.id] = event.stream;
+          setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: event.stream}));
+          // openTokSubscribeToStream(event.stream.id, event.stream);
+          break;
+        case "streamDestroyed":
+          console.log("New OpenTok stream destroyed:", event);
+          // delete openTokStreams[event.stream.id];
+          setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: null}));
+          break;
       }
+    });
+  }
+
+  function stopOpenTokSession() {
+    openTokStopSession();
+  }
+
+  function updateStreamingStatus(streamingStatus) {
+    console.log("Got updated streaming status:", streamingStatus);
+    setStreamingStatus(streamingStatus);
+  }
+
+  function updateStreams(event) {
+    console.log("Received streamCreated event:", event);
+    loadStreams().then((streams) => {
+      console.log("Loaded streams:", streams);
+      setStreams(streams)
+    });
+  }
+
+  function handleUserProfileUpdated(event) {
+    console.log("Received userProfileUpdated event:", event);
+    if (event.data && event.data.streamingStatus) {
+      updateStreamingStatus(event.data.streamingStatus);
     }
-    setWebsocket(ws);
   }
 
   useEffect(() => {
@@ -79,25 +125,72 @@ export default function Pool() {
       setIsMyPool(ownPool);
     }
 
-    async function onLoad() {
-      if (isInitialized) {
-        checkPoolOwnership(pool, userInfo);
-        return;
-      }
-      setIsInitialized(true);
+    checkPoolOwnership(pool, userInfo);
+  });
 
+  useEffect(() => {
+    function tryEnterPool() {
+      console.log("Try enter pool:", getIsInPool(), pool, websocketIsConnected())
+      if (!getIsInPool() && pool && websocketIsConnected()) {
+        console.log("Entering pool");
+        websocketSubscribe("streamCreated", updateStreams);
+        websocketSubscribe("streamUpdated", updateStreams);
+        websocketSubscribe("streamDeleted", updateStreams);
+        websocketSubscribe("userProfileUpdated", handleUserProfileUpdated);
+        websocketSend("enterPool", {
+          poolId: pool.poolId
+        });
+        setIsInPool(true);
+      }
+    }
+
+    function tryExitPool() {
+      console.log("Try exit pool:", getIsInPool(), pool, websocketIsConnected())
+      if (getIsInPool() && pool && websocketIsConnected()) {
+        console.log("Exiting pool");
+        websocketUnsubscribe("streamCreated", updateStreams);
+        websocketUnsubscribe("streamUpdated", updateStreams);
+        websocketUnsubscribe("streamDeleted", updateStreams);
+        websocketUnsubscribe("userProfileUpdated", handleUserProfileUpdated);
+        websocketSend("exitPool", {
+          poolId: pool.poolId
+        });
+        setIsInPool(false);
+      }
+    }
+
+    function websocketCallback() {
+      console.log("Websocket callback:", pool, websocketIsConnected());
+      tryEnterPool();
+    }
+
+    websocketOn(websocketCallback);
+    tryEnterPool();
+
+    return function cleanup() {
+      websocketOff(websocketCallback);
+      tryExitPool();
+    }
+  }, [pool]);
+
+  useEffect(() => {
+    async function onLoad() {
       console.log("Pool load starting");
       try {
-        setStreamingStatus((await loadUserProfile()).streamingStatus);
-
         const pool = await loadPool();
-        console.log("Got pool:", pool);
+        console.log("Loaded pool:", pool);
         setPool(pool);
-        checkPoolOwnership(pool, userInfo);
 
-        connectWebsocket(pool.poolId);
+        const streamingStatus = (await loadUserProfile()).streamingStatus;
+        console.log("Loaded streaming status:", streamingStatus);
+        updateStreamingStatus(streamingStatus);
 
-        setMyStreams(await loadStreams());
+        if (pool.openTokSessionConfig && streamingStatus.openTokToken) {
+          console.log("Starting OpenTok session");
+          startOpenTokSession(pool.openTokSessionConfig, streamingStatus.openTokToken);
+        }
+
+        setStreams(await loadStreams());
         console.log("Pool load done");
       } catch (e) {
         onError(e);
@@ -106,14 +199,12 @@ export default function Pool() {
 
     onLoad();
     return function cleanup() {
-      if (websocket) {
-        console.log("Closing websocket");
-        isClosingRef.current = true;
-        websocket.close();
-        setWebsocket(null);
+      if (getIsOpenTokSessionConnected()) {
+        console.log("About to stop OpenTok session");
+        stopOpenTokSession();
       }
     };
-  }, [userInfo, pool, websocket, isClosing]);
+  }, []);
 
   function deletePool() {
     return API.del("pools", `/${poolId}`);
@@ -150,7 +241,7 @@ export default function Pool() {
         return (
           <Grid item key={stream.streamId}>
             <Card className={classes.card}>
-              <Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">
+              {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
                 <CardContent>
                   <Typography color="textPrimary" variant="h5" gutterBottom>
                     {stream.name}
@@ -158,18 +249,15 @@ export default function Pool() {
                   <Typography variant="h6" color="textSecondary">
                     {"Created: " + new Date(stream.createdAt).toLocaleString()}
                   </Typography>
-                  <StreamView id={stream.openTokStreamId} size="small"/>
+                  {console.log("Rendering:", stream.openTokStreamId, stream.openTokStreamId && openTokStreams[stream.openTokStreamId])}
+                  {stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
+                  <StreamView id={stream.openTokStreamId} size="small" stream={openTokStreams[stream.openTokStreamId]}/>}
                 </CardContent>
-              </Link>
+              {/*</Link>*/}
             </Card>
           </Grid>
         )
       });
-  }
-
-  async function streamingStatusUpdated(streamingStatus) {
-    console.log("Got updated streaming status:", streamingStatus);
-    setStreamingStatus(streamingStatus)
   }
 
   return (
@@ -186,17 +274,21 @@ export default function Pool() {
             <DeleteIcon/>
           </Fab>
         </Grid>}
-        <Grid item>
-          <StreamingStatus pool={pool} streamingStatus={streamingStatus}
-                           streamingStatusCallback={streamingStatusUpdated}/>
-        </Grid>
+        {isOpenTokSessionConnectedState && pool && streamingStatus && <Grid item>
+          <StreamingStatus
+            pool={pool}
+            streamingStatus={streamingStatus}
+            streamingStatusCallback={updateStreamingStatus}/>
+        </Grid>}
         <Grid item>
           <Typography variant="h3">
             {pool.name}
           </Typography>
         </Grid>
       </Grid>
-      {myStreams && renderStreamsList(myStreams)}
+      <Grid container spacing={3}>
+        {streams && renderStreamsList(streams)}
+      </Grid>
     </Container>
-  )
+  );
 }

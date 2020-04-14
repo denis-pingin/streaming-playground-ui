@@ -11,6 +11,8 @@ export function initSentry() {
 }
 
 export function logError(error, errorInfo = null) {
+  console.log(error, errorInfo);
+
   if (isLocal) {
     return;
   }

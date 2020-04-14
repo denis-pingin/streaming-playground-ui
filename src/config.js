@@ -34,6 +34,9 @@ const prod = {
     USER_POOL_ID: "",
     APP_CLIENT_ID: "",
     IDENTITY_POOL_ID: ""
+  },
+  websocket: {
+    URL: ""
   }
 };
 

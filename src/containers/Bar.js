@@ -15,8 +15,17 @@ import {
 import UserAvatar from "../components/UserAvatar";
 import {useAuthContext} from "../libs/AuthContext";
 import Link from "@material-ui/core/Link";
+import makeStyles from "@material-ui/core/styles/makeStyles";
+
+const useStyles = makeStyles((theme) => ({
+  title: {
+    "user-select": "none"
+  }
+}));
+
 
 export default function Bar({logout, ...props}) {
+  const classes = useStyles();
   const {isAuthenticated, userInfo} = useAuthContext();
   const [anchorElement, setAnchorElement] = useState(null);
   const [menuItems, setMenuItems] = useState([
@@ -48,7 +57,7 @@ export default function Bar({logout, ...props}) {
       <Toolbar>
         <Box display="flex" flexGrow={1}>
           <Typography variant="h6">
-            <Link component={RouterLink} to="/" underline="none" color="textPrimary">
+            <Link component={RouterLink} to="/" underline="none" color="textPrimary" className={classes.title}>
               Streaming Playground
             </Link>
           </Typography>

@@ -56,10 +56,7 @@ export default function Login() {
 
     try {
       await Auth.signIn(fields.email, fields.password);
-      const userInfo = await Auth.currentUserInfo();
-      console.log(userInfo);
-      login(true);
-      setUserInfo(userInfo);
+      login();
     } catch (e) {
       onError(e);
       setIsLoading(false);

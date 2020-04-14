@@ -29,22 +29,18 @@ const useStyles = makeStyles((theme) => ({
 export default function StreamingStatus({pool, streamingStatus, streamingStatusCallback, ...props}) {
   const classes = useStyles();
   const {userInfo} = useAuthContext();
-  const {startSession, startPublishing, stopPublishing, subscribeToStream} = useOpenTokContext();
+  const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [myStreamingStatus, setMyStreamingStatus] = useState(streamingStatus);
 
-  function handleError(error) {
-    if (error) {
-      logError(error);
-    }
-  }
-
-  async function onLoad() {
+  function setupStreaming(streamingStatus) {
     try {
-      if (myStreamingStatus.streaming) {
-        startOpenTokStreaming(pool.openTokSessionConfig, myStreamingStatus.openTokToken);
-      } else {
-        stopOpenTokStreaming();
+      console.log("Setup streaming:", streamingStatus, openTokIsPublishing())
+      if (streamingStatus.streaming && !openTokIsPublishing()) {
+        console.log("Streaming is on, starting publishing");
+        startOpenTokPublishing();
+      } else if (!streamingStatus.streaming && openTokIsPublishing()) {
+        console.log("Streaming is off, stopping publishing");
+        stopOpenToPublishing();
       }
     } catch (e) {
       onError(e);
@@ -52,48 +48,41 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   useEffect(() => {
+    async function onLoad() {
+      setupStreaming(streamingStatus);
+    }
+
     onLoad();
     return function cleanup() {
-      stopOpenTokStreaming();
+      stopOpenToPublishing();
     };
-  }, [myStreamingStatus]);
+  }, [streamingStatus, openTokIsSessionConnected()]);
 
   async function handlePublishingStarted(openTokStreamId) {
-    if (!myStreamingStatus.streaming) {
-      console.log("User is not streaming:", myStreamingStatus);
+    if (!streamingStatus.streaming) {
+      console.log("User is not streaming:", streamingStatus);
       return;
     }
     console.log("Updating stream with OpenTok streamId:", openTokStreamId);
-    const stream = await updateStream(pool.poolId, myStreamingStatus.streamId, openTokStreamId);
+    const stream = await updateStream(pool.poolId, streamingStatus.streamId, openTokStreamId);
     console.log("Updated stream with OpenTok sessionId:", stream);
   }
 
-  function startOpenTokStreaming(openTokSessionConfig, openTokToken) {
-    startSession(openTokSessionConfig.apiKey, openTokSessionConfig.sessionId, openTokToken, function (event) {
+  function startOpenTokPublishing() {
+    openTokStartPublishing(function(event) {
       switch (event.type) {
-        case "sessionConnected":
-          console.log("OpenTok session event:", event);
-          startPublishing(event.session, function(event) {
-            switch (event.type) {
-              case "streamCreated":
-                console.log("OpenTok publishing stream created:", event);
-                handlePublishingStarted(event.stream.id);
-                break;
-              default:
-                console.log("OpenTok publishing event:", event);
-            }
-          });
-          break;
         case "streamCreated":
-          console.log("New OpenTok stream created:", event);
-          subscribeToStream(event.stream.id, event.target, event.stream)
+          console.log("OpenTok publishing stream created:", event);
+          handlePublishingStarted(event.stream.id);
           break;
+        default:
+          console.log("OpenTok publishing event:", event);
       }
     });
   }
 
-  function stopOpenTokStreaming() {
-    stopPublishing()
+  function stopOpenToPublishing() {
+    openTokStopPublishing()
   }
 
   async function startStreaming(poolId) {
@@ -118,19 +107,18 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   async function handleStartStreaming() {
-    if (myStreamingStatus.streaming) {
+    if (streamingStatus.streaming) {
       throw new Error("Already streaming");
     }
 
     try {
       setIsProcessing(true);
       const stream = await startStreaming(pool.poolId);
-      setStreamingStatus({
-        streaming: stream.streaming,
-        streamId: stream.streamId,
-        openTokToken: stream.openTokToken
-      })
-      await onLoad();
+      streamingStatus.streaming = stream.streaming;
+      streamingStatus.streamId = stream.streamId;
+      streamingStatus.openTokToken = stream.openTokToken;
+      setStreamingStatus(streamingStatus);
+      setupStreaming(streamingStatus);
       setIsProcessing(false);
     } catch (e) {
       onError(e);
@@ -140,27 +128,24 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
 
   function setStreamingStatus(streamingStatus) {
     console.log("New streaming status:", streamingStatus);
-    setMyStreamingStatus(streamingStatus)
+    // setMyStreamingStatus(streamingStatus)
     streamingStatusCallback(streamingStatus);
   }
 
   async function handleStopStreaming(event) {
     event.preventDefault();
 
-    if (!myStreamingStatus.streaming) {
+    if (!streamingStatus.streaming) {
       throw new Error("Not streaming");
     }
 
     try {
       setIsProcessing(true);
-      await stopStreaming(pool.poolId, myStreamingStatus.streamId);
-      const streamingStatus = {
-        streaming: false,
-        streamId: null,
-        openTokToken: null
-      }
+      await stopStreaming(pool.poolId, streamingStatus.streamId);
+      streamingStatus.streaming = false;
+      streamingStatus.streamId = null;
       setStreamingStatus(streamingStatus);
-      await onLoad()
+      setupStreaming(streamingStatus);
       setIsProcessing(false);
     } catch (e) {
       onError(e);
@@ -169,7 +154,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   return (
-    myStreamingStatus && myStreamingStatus.streaming ? (
+    streamingStatus.streaming ? (
       <>
         <Fab color="primary"
              aria-label="stop"

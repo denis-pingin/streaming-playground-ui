@@ -58,27 +58,27 @@ export default function Stream() {
     return API.get("user", `/profile`);
   }
 
-  async function onLoad() {
-    try {
-      const userProfile = await loadUserProfile();
-      setUserProfile(userProfile);
-      const pool = await loadPool(poolId);
-      setPool(pool);
-      const stream = await loadStream(poolId, streamId);
-      setStream(stream);
-      startOpenTokSession(
-        pool.openTokSessionConfig.apiKey,
-        pool.openTokSessionConfig.sessionId,
-        userProfile.streamingStatus.openTokToken
-      );
-    } catch (e) {
-      onError(e);
-    }
-  }
-
   useEffect(() => {
+    async function onLoad() {
+      try {
+        const userProfile = await loadUserProfile();
+        setUserProfile(userProfile);
+        const pool = await loadPool(poolId);
+        setPool(pool);
+        const stream = await loadStream(poolId, streamId);
+        setStream(stream);
+        startOpenTokSession(
+          pool.openTokSessionConfig.apiKey,
+          pool.openTokSessionConfig.sessionId,
+          userProfile.streamingStatus.openTokToken
+        );
+      } catch (e) {
+        onError(e);
+      }
+    }
+
     onLoad();
-  }, [poolId, streamId]);
+  });
 
   return (
     <div className="Stream">

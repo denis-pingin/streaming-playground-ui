@@ -12,16 +12,12 @@ const useStyles = makeStyles((theme) => ({
   videoPreview: {
     "z-index": 99999,
     position: "fixed",
-    right: theme.spacing(3),
-    bottom: theme.spacing(3)
+    right: theme.spacing(2),
+    bottom: theme.spacing(2)
   },
-  small: {
-    width: "320px",
-    height: "240px",
-  },
-  medium: {
-    width: "640px",
-    height: "480px",
+  video: {
+    width: "100%",
+    height: "100%"
   }
 }));
 
@@ -30,6 +26,11 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   const {userInfo} = useAuthContext();
   const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState(null);
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
 
   function setupStreaming(streamingStatus) {
     try {
@@ -56,6 +57,20 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
     };
   }, []);
 
+  useEffect(() => {
+    function handleResize() {
+      setWindowDimensions({
+        height: window.innerHeight,
+        width: window.innerWidth
+      });
+    }
+
+    window.addEventListener('resize', handleResize)
+    return function cleanup() {
+      window.removeEventListener('resize', handleResize);
+    }
+  });
+
   async function handlePublishingStarted(openTokStreamId) {
     if (!streamingStatus.streaming) {
       console.log("User is not streaming:", streamingStatus);
@@ -71,6 +86,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
       switch (event.type) {
         case "streamCreated":
           console.log("OpenTok publishing stream created:", event);
+          setVideoDimensions(event.stream.videoDimensions);
           handlePublishingStarted(event.stream.id);
           break;
         default:
@@ -150,6 +166,22 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
     }
   }
 
+  function getPreviewStyle(windowDimensions, videoDimensions) {
+    if (windowDimensions && videoDimensions) {
+      const aspect = videoDimensions.width / videoDimensions.height;
+      const previewWidth = windowDimensions.width / 4
+      return {
+        width: previewWidth,
+        height: previewWidth / aspect,
+      };
+    } else {
+      return {
+        width: 0,
+        height: 0
+      }
+    }
+  }
+
   return (
     streamingStatus.streaming ? (
       <>
@@ -160,8 +192,8 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
              disabled={isProcessing}>
           <VideocamOffIcon/>
         </Fab>
-        <div className={classes.videoPreview}>
-          <div id="publisher" className={classes.small}/>
+        <div className={classes.videoPreview} style={getPreviewStyle(windowDimensions, videoDimensions)}>
+          <div id="publisher" className={classes.video}/>
         </div>
       </>
     ) : (

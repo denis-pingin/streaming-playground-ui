@@ -13,8 +13,12 @@ const styles = theme => ({
 class ErrorBoundary extends React.Component {
   state = {hasError: false};
 
-  static getDerivedStateFromError(error) {
-    return {hasError: true};
+  static getDerivedStateFromError(error, errorInfo) {
+    return {
+      hasError: true,
+      error: error,
+      errorInfo: errorInfo
+    };
   }
 
   componentDidCatch(error, errorInfo) {
@@ -26,6 +30,8 @@ class ErrorBoundary extends React.Component {
     return this.state.hasError ? (
       <div className={classes.root}>
         <h3>Sorry there was a problem loading this page</h3>
+        <div>{this.state.error}</div>
+        <div>{this.state.errorInfo}</div>
       </div>
     ) : (
       this.props.children

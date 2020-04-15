@@ -43,6 +43,7 @@ export default function Pool() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [, setResizeState] = useState(null);
   const gridItemRefs = useRef([]);
+  const streamingStatusRef = useRef(streamingStatus);
 
   if (streams) {
     if (gridItemRefs.current.length !== streams.length) {
@@ -106,15 +107,25 @@ export default function Pool() {
     openTokStopSession();
   }
 
+  function getStreamingStatus() {
+    return streamingStatusRef.current;
+  }
+
   function updateStreamingStatus(streamingStatus) {
     console.log("Got updated streaming status:", streamingStatus);
+    streamingStatusRef.current = streamingStatus;
     setStreamingStatus(streamingStatus);
   }
 
   function updateStreams(event) {
-    console.log("Received streamCreated event:", event);
     loadStreams().then((streams) => {
-      console.log("Loaded streams:", streams);
+      const streamingStatus = getStreamingStatus();
+      console.log("Loaded streams:", streams, streamingStatus);
+      if (streamingStatus && streamingStatus.streaming) {
+        streams.forEach((stream) => {
+          stream.own = stream.streamId === streamingStatus.streamId;
+        });
+      }
       setStreams(streams)
     });
   }
@@ -208,7 +219,7 @@ export default function Pool() {
           startOpenTokSession(pool.openTokSessionConfig, streamingStatus.openTokToken);
         }
 
-        setStreams(await loadStreams());
+        updateStreams();
         console.log("Pool load done");
       } catch (e) {
         onError(e);
@@ -248,9 +259,7 @@ export default function Pool() {
 
   function renderStreamsList(streams) {
     return streams
-      .filter((stream) => {
-        return stream.streamId !== streamingStatus.streamId;
-      })
+      .filter((stream) => !stream.own)
       .map((stream, i) => {
         function getStreamViewWidth() {
           if (gridItemRefs.current && gridItemRefs.current[i]) {

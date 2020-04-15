@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {logError, onError} from "../libs/errorLib";
+import {onError} from "../libs/errorLib";
 import {API} from "aws-amplify";
 import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
@@ -82,7 +82,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   function startOpenTokPublishing() {
-    openTokStartPublishing(function(event) {
+    openTokStartPublishing(function (event) {
       switch (event.type) {
         case "streamCreated":
           console.log("OpenTok publishing stream created:", event);
@@ -167,19 +167,18 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   function getPreviewStyle(windowDimensions, videoDimensions) {
-    if (windowDimensions && videoDimensions) {
-      const aspect = videoDimensions.width / videoDimensions.height;
-      const previewWidth = windowDimensions.width / 4
-      return {
-        width: previewWidth,
-        height: previewWidth / aspect,
-      };
-    } else {
-      return {
-        width: 0,
-        height: 0
-      }
+    let aspect = 4 / 3;
+    let previewWidth = 0;
+    if (windowDimensions) {
+      previewWidth = windowDimensions.width / 4
     }
+    if (videoDimensions) {
+      aspect = videoDimensions.width / videoDimensions.height;
+    }
+    return {
+      width: previewWidth,
+      height: previewWidth / aspect,
+    };
   }
 
   return (

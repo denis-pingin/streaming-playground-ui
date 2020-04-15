@@ -18,7 +18,7 @@ import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
 
 const useStyles = makeStyles((theme) => ({
   paper: {
-    marginTop: theme.spacing(8),
+    marginTop: theme.spacing(3),
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -55,7 +55,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await Auth.signIn(fields.email, fields.password);
+      await Auth.signIn(fields.email.toLowerCase(), fields.password);
       login();
     } catch (e) {
       onError(e);
@@ -109,7 +109,7 @@ export default function Login() {
             variant="contained"
             color="primary"
             className={classes.submit}
-            disabled={!validateForm()}
+            disabled={isLoading || !validateForm()}
           >
             Sign In
           </Button>

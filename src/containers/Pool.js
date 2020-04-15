@@ -262,7 +262,7 @@ export default function Pool() {
       .filter((stream) => !stream.own)
       .map((stream, i) => {
         function getStreamViewWidth() {
-          if (gridItemRefs.current && gridItemRefs.current[i]) {
+          if (gridItemRefs.current && gridItemRefs.current[i] && gridItemRefs.current[i].current) {
             const parentElement = gridItemRefs.current[i].current
             const computedStyle = getComputedStyle(parentElement);
             return parentElement.clientWidth - parseFloat(computedStyle.paddingLeft) - parseFloat(computedStyle.paddingRight);
@@ -272,9 +272,7 @@ export default function Pool() {
         }
 
         function getStreamViewHeight() {
-          if (gridItemRefs.current &&
-            gridItemRefs.current[i] &&
-            stream.openTokStreamId &&
+          if (stream.openTokStreamId &&
             openTokStreams[stream.openTokStreamId] &&
             openTokStreams[stream.openTokStreamId].videoDimensions) {
 

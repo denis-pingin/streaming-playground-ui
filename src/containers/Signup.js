@@ -16,7 +16,7 @@ import Link from "@material-ui/core/Link";
 
 const useStyles = makeStyles((theme) => ({
   paper: {
-    marginTop: theme.spacing(8),
+    marginTop: theme.spacing(3),
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -68,7 +68,7 @@ export default function Signup() {
 
     try {
       const newUser = await Auth.signUp({
-        username: fields.email,
+        username: fields.email.toLowerCase(),
         password: fields.password,
         attributes: {
           name: fields.name
@@ -88,8 +88,8 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      await Auth.confirmSignUp(fields.email, fields.confirmationCode);
-      await Auth.signIn(fields.email, fields.password);
+      await Auth.confirmSignUp(fields.email.toLowerCase(), fields.confirmationCode);
+      await Auth.signIn(fields.email.toLowerCase(), fields.password);
 
       login()
 
@@ -216,7 +216,7 @@ export default function Signup() {
               variant="contained"
               color="primary"
               className={classes.submit}
-              disabled={!validateForm()}
+              disabled={isLoading || !validateForm()}
             >
               Sign Up
             </Button>

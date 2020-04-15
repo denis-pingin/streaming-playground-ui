@@ -1,33 +1,35 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
-import {logError} from "../libs/errorLib";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 
 const useStyles = makeStyles((theme) => ({
-  video: {
-  },
+  video: props => ({
+    width: props.width,
+    height: props.height,
+    "& div": {
+      margin: "auto"
+    }
+  }),
 }));
 
-export default function StreamView({stream, size, ...props}) {
-  const classes = useStyles(useStyles);
+export default function StreamView(props) {
+  const {stream, width, height, ...other} = props;
+  const classes = useStyles(props);
   const {openTokSubscribeToStream} = useOpenTokContext();
+  const [, setDimensions] = useState({});
 
   useEffect(() => {
-    function init() {
-      openTokSubscribeToStream(stream.id, stream);
-    }
-    init();
+    setDimensions({
+      width: width,
+      height: height
+    });
+  }, [width, height]);
+
+  useEffect(() => {
+    openTokSubscribeToStream(stream.id, stream);
   }, [stream]);
 
-  function handleError(error) {
-    if (error) {
-      logError(error);
-    }
-  }
-
   return (
-    <div>
-      <div id={stream.id} className={classes.video}/>
-    </div>
+    <div id={stream.id} className={classes.video}/>
   );
 }

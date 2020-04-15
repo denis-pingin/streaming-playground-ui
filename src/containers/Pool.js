@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {createRef, useEffect, useRef, useState} from "react";
 import {API} from "aws-amplify";
 import {useHistory, useParams} from "react-router-dom";
 import {onError} from "../libs/errorLib";
@@ -29,7 +29,7 @@ export default function Pool() {
   const history = useHistory();
   const {userInfo} = useAuthContext();
   const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff,} = useWebsocketContext();
-  const {openTokGetSession, openTokStartSession, openTokStopSession, openTokSubscribeToStream} = useOpenTokContext();
+  const {openTokStartSession, openTokStopSession} = useOpenTokContext();
   const [streamingStatus, setStreamingStatus] = useState(null);
   const [pool, setPool] = useState(null);
   const [streams, setStreams] = useState(null);
@@ -41,6 +41,14 @@ export default function Pool() {
   const [isOpenTokSessionConnectedState, setIsOpenTokSessionConnectedState] = useState(false);
   const [openTokStreams, setOpenTokStreams] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [, setResizeState] = useState(null);
+  const gridItemRefs = useRef([]);
+
+  if (streams) {
+    if (gridItemRefs.current.length !== streams.length) {
+      gridItemRefs.current = Array(streams.length).fill().map((_, i) => gridItemRefs.current[i] || createRef());
+    }
+  }
 
   function getIsInPool() {
     return isInPool.current;
@@ -119,12 +127,23 @@ export default function Pool() {
   }
 
   useEffect(() => {
+    function handleResize() {
+      setResizeState({
+        height: window.innerHeight,
+        width: window.innerWidth
+      });
+    }
+
     function checkPoolOwnership(pool, userInfo) {
       const ownPool = userInfo && pool && pool.ownerUserId === userInfo.id;
       setIsMyPool(ownPool);
     }
 
     checkPoolOwnership(pool, userInfo);
+    window.addEventListener('resize', handleResize)
+    return function cleanup() {
+      window.removeEventListener('resize', handleResize);
+    }
   });
 
   useEffect(() => {
@@ -232,21 +251,48 @@ export default function Pool() {
       .filter((stream) => {
         return stream.streamId !== streamingStatus.streamId;
       })
-      .map((stream) => {
+      .map((stream, i) => {
+        function getStreamViewWidth() {
+          if (gridItemRefs.current && gridItemRefs.current[i]) {
+            const parentElement = gridItemRefs.current[i].current
+            const computedStyle = getComputedStyle(parentElement);
+            return parentElement.clientWidth - parseFloat(computedStyle.paddingLeft) - parseFloat(computedStyle.paddingRight);
+          } else {
+            return 0;
+          }
+        }
+
+        function getStreamViewHeight() {
+          if (gridItemRefs.current &&
+            gridItemRefs.current[i] &&
+            stream.openTokStreamId &&
+            openTokStreams[stream.openTokStreamId] &&
+            openTokStreams[stream.openTokStreamId].videoDimensions) {
+
+            const streamViewWidth = getStreamViewWidth();
+            const videoDimensions = openTokStreams[stream.openTokStreamId].videoDimensions;
+            const aspect = videoDimensions.width / videoDimensions.height;
+            return streamViewWidth / aspect;
+          } else {
+            return 0;
+          }
+        }
+
         return (
           <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
             <Card className={classes.card}>
               {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
-              <CardContent>
+              <CardContent ref={gridItemRefs.current[i]}>
                 <Typography component="h1" variant="h5" color="textPrimary" gutterBottom>
                   {stream.name}
                 </Typography>
                 <Typography component="h1" variant="h6" color="textSecondary">
                   {"Created: " + new Date(stream.createdAt).toLocaleString()}
                 </Typography>
-                {console.log("Rendering:", stream.openTokStreamId, stream.openTokStreamId && openTokStreams[stream.openTokStreamId])}
-                {stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
-                <StreamView id={stream.openTokStreamId} size="small" stream={openTokStreams[stream.openTokStreamId]}/>}
+                {/*{console.log("Rendering:", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetWidth : "no parent", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetHeight : "no parent")}*/}
+                {gridItemRefs.current[i] && stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
+                <StreamView id={stream.openTokStreamId} width={getStreamViewWidth()} height={getStreamViewHeight()}
+                            stream={openTokStreams[stream.openTokStreamId]}/>}
               </CardContent>
               {/*</Link>*/}
             </Card>
@@ -261,7 +307,6 @@ export default function Pool() {
       <Grid container spacing={3}>
         {isMyPool &&
         <>
-          {console.log(showDeleteConfirmation)}
           {showDeleteConfirmation &&
           <ConfirmationDialog
             title="Delete pool?"

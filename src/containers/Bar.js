@@ -13,7 +13,8 @@ const useStyles = makeStyles((theme) => ({
   },
   title: {
     flexGrow: 1,
-    "user-select": "none"
+    "user-select": "none",
+    "white-space": "nowrap"
   },
 }));
 

@@ -39,7 +39,7 @@ const useOpenTokContext = () => {
   function isPublishing() {
     const session = getSession();
     const publisher = getPublisher();
-    return session && publisher;
+    return session && publisher && true;
   }
 
   function getSession() {
@@ -176,7 +176,9 @@ export function doDisconnectFromSession(session) {
 
 export function doSubscribeToStream(elementId, session, stream) {
   session.subscribe(stream, elementId, {
-    insertMode: 'append'
+    insertMode: 'append',
+    width: '100%',
+    height: '100%'
   }, handleError);
   console.log("Subscribed to stream:", stream);
 }
@@ -184,7 +186,9 @@ export function doSubscribeToStream(elementId, session, stream) {
 export function doStartPublishing(session) {
   console.log("Starting publishing");
   const publisher = OT.initPublisher('publisher', {
-    insertMode: 'append'
+    insertMode: 'append',
+    width: '100%',
+    height: '100%'
   }, handleError);
   session.publish(publisher, handleError);
   console.log("Started publishing");

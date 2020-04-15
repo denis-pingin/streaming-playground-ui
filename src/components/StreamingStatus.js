@@ -13,7 +13,7 @@ const useStyles = makeStyles((theme) => ({
     "z-index": 99999,
     position: "fixed",
     right: theme.spacing(3),
-    bottom: theme.spacing(3),
+    bottom: theme.spacing(3)
   },
   small: {
     width: "320px",
@@ -23,7 +23,6 @@ const useStyles = makeStyles((theme) => ({
     width: "640px",
     height: "480px",
   }
-
 }));
 
 export default function StreamingStatus({pool, streamingStatus, streamingStatusCallback, ...props}) {
@@ -40,7 +39,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
         startOpenTokPublishing();
       } else if (!streamingStatus.streaming && openTokIsPublishing()) {
         console.log("Streaming is off, stopping publishing");
-        stopOpenToPublishing();
+        stopOpenTokPublishing();
       }
     } catch (e) {
       onError(e);
@@ -48,15 +47,14 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   useEffect(() => {
-    async function onLoad() {
-      setupStreaming(streamingStatus);
-    }
+    setupStreaming(streamingStatus);
+  }, [streamingStatus, streamingStatus.streaming, openTokIsSessionConnected()]);
 
-    onLoad();
+  useEffect(() => {
     return function cleanup() {
-      stopOpenToPublishing();
+      stopOpenTokPublishing();
     };
-  }, [streamingStatus, openTokIsSessionConnected()]);
+  }, []);
 
   async function handlePublishingStarted(openTokStreamId) {
     if (!streamingStatus.streaming) {
@@ -81,7 +79,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
     });
   }
 
-  function stopOpenToPublishing() {
+  function stopOpenTokPublishing() {
     openTokStopPublishing()
   }
 
@@ -128,7 +126,6 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
 
   function setStreamingStatus(streamingStatus) {
     console.log("New streaming status:", streamingStatus);
-    // setMyStreamingStatus(streamingStatus)
     streamingStatusCallback(streamingStatus);
   }
 
@@ -164,7 +161,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
           <VideocamOffIcon/>
         </Fab>
         <div className={classes.videoPreview}>
-          <div id="publisher"/>
+          <div id="publisher" className={classes.small}/>
         </div>
       </>
     ) : (

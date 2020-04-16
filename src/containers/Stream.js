@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {API} from "aws-amplify";
 import {useParams} from "react-router-dom";
-import {PageHeader} from "react-bootstrap";
 import {logError, onError} from "../libs/errorLib";
 import "./Stream.css";
 
@@ -12,7 +11,6 @@ export default function Stream() {
   const [stream, setStream] = useState(null);
   const [pool, setPool] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   function handleError(error) {
     if (error) {
@@ -82,7 +80,6 @@ export default function Stream() {
 
   return (
     <div className="Stream">
-      <PageHeader>Username</PageHeader>
       <div className="VideoStream">
         <div id="subscriber"/>
       </div>

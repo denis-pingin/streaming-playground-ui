@@ -1,31 +1,21 @@
-import React, {createRef, useEffect, useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {API} from "aws-amplify";
 import {useHistory, useParams} from "react-router-dom";
 import {onError} from "../libs/errorLib";
-import StreamView from "../components/StreamView";
 import Container from "@material-ui/core/Container";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Fab from "@material-ui/core/Fab";
 import DeleteIcon from "@material-ui/icons/Delete";
-import Card from "@material-ui/core/Card";
-import CardContent from "@material-ui/core/CardContent";
 import StreamingStatus from "../components/StreamingStatus";
 import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
 import {useWebsocketContext} from "../contexts/WebsocketContext";
 import ConfirmationDialog from "../components/ConfirmationDialog";
-import CardHeader from "@material-ui/core/CardHeader";
+import StreamCard from "../components/StreamCard";
 
-const useStyles = makeStyles((theme) => ({
-  card: {
-    minWidth: 250,
-  },
-  videoHeader: {
-    paddingTop: 0
-  }
-}));
+const useStyles = makeStyles((theme) => ({}));
 
 export default function Pool() {
   const classes = useStyles();
@@ -45,16 +35,8 @@ export default function Pool() {
   const [openTokStreams, setOpenTokStreams] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [, setResizeState] = useState(null);
-  const gridItemRefs = useRef([]);
   const [currentStreamId, setCurrentStreamId] = useState(null);
   const currentStreamIdRef = useRef(currentStreamId);
-
-  // Set gridItemRefs array size based on stream count
-  if (streams) {
-    if (gridItemRefs.current.length !== streams.length) {
-      gridItemRefs.current = Array(streams.length).fill().map((_, i) => gridItemRefs.current[i] || createRef());
-    }
-  }
 
   function getIsInPool() {
     return isInPool.current;
@@ -265,43 +247,9 @@ export default function Pool() {
     return streams
       .filter((stream) => !stream.own)
       .map((stream, i) => {
-        function getStreamViewWidth() {
-          if (gridItemRefs.current && gridItemRefs.current[i] && gridItemRefs.current[i].current) {
-            const parentElement = gridItemRefs.current[i].current
-            const computedStyle = getComputedStyle(parentElement);
-            return parentElement.clientWidth - parseFloat(computedStyle.paddingLeft) - parseFloat(computedStyle.paddingRight);
-          } else {
-            return 0;
-          }
-        }
-
-        function getStreamViewHeight() {
-          if (stream.openTokStreamId &&
-            openTokStreams[stream.openTokStreamId] &&
-            openTokStreams[stream.openTokStreamId].videoDimensions) {
-
-            const streamViewWidth = getStreamViewWidth();
-            const videoDimensions = openTokStreams[stream.openTokStreamId].videoDimensions;
-            const aspect = videoDimensions.width / videoDimensions.height;
-            return streamViewWidth / aspect;
-          } else {
-            return 0;
-          }
-        }
-
         return (
           <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
-            <Card className={classes.card}>
-              {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
-              <CardContent ref={gridItemRefs.current[i]}>
-                {/*{console.log("Rendering:", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetWidth : "no parent", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetHeight : "no parent")}*/}
-                {gridItemRefs.current[i] && stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
-                <StreamView id={stream.openTokStreamId} width={getStreamViewWidth()} height={getStreamViewHeight()}
-                            stream={openTokStreams[stream.openTokStreamId]}/>}
-              </CardContent>
-              <CardHeader className={classes.videoHeader} title={stream.name} subheader={"Created: " + new Date(stream.createdAt).toLocaleString()}/>
-              {/*</Link>*/}
-            </Card>
+            <StreamCard stream={stream} openTokStream={openTokStreams[stream.openTokStreamId]}/>
           </Grid>
         )
       });

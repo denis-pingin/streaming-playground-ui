@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {onError} from "../libs/errorLib";
 import {API} from "aws-amplify";
 import {useAuthContext} from "../contexts/AuthContext";
@@ -21,7 +21,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function StreamingStatus({pool, streamingStatus, streamingStatusCallback, ...props}) {
+export default function StreamingStatus({pool, streamId, streamIdUpdated, ...props}) {
   const classes = useStyles();
   const {userInfo} = useAuthContext();
   const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
@@ -31,14 +31,27 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
     width: window.innerWidth,
     height: window.innerHeight
   });
+  const [currentStreamId, setCurrentStreamId] = useState(streamId);
+  const currentStreamIdRef = useRef(currentStreamId);
 
-  function setupStreaming(streamingStatus) {
+  function getCurrentStreamId() {
+    return currentStreamIdRef.current;
+  }
+
+  function updateCurrentStreamId(currentStreamId) {
+    console.log("Pool: updated currentStreamId:", currentStreamId);
+    currentStreamIdRef.current = currentStreamId;
+    setCurrentStreamId(currentStreamId);
+    streamIdUpdated(currentStreamId)
+  }
+
+  function setupStreaming(currentStreamId) {
     try {
-      console.log("Setup streaming:", streamingStatus, openTokIsPublishing())
-      if (streamingStatus.streaming && !openTokIsPublishing()) {
+      console.log("Setup streaming:", currentStreamId, openTokIsPublishing())
+      if (currentStreamId && !openTokIsPublishing()) {
         console.log("Streaming is on, starting publishing");
         startOpenTokPublishing();
-      } else if (!streamingStatus.streaming && openTokIsPublishing()) {
+      } else if (!currentStreamId && openTokIsPublishing()) {
         console.log("Streaming is off, stopping publishing");
         stopOpenTokPublishing();
       }
@@ -48,8 +61,12 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   useEffect(() => {
-    setupStreaming(streamingStatus);
-  }, [streamingStatus, streamingStatus.streaming, openTokIsSessionConnected()]);
+    function init() {
+      updateCurrentStreamId(currentStreamId);
+      setupStreaming(currentStreamId);
+    }
+    init();
+  }, [currentStreamId, openTokIsSessionConnected()]);
 
   useEffect(() => {
     return function cleanup() {
@@ -72,13 +89,12 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   });
 
   async function handlePublishingStarted(openTokStreamId) {
-    if (!streamingStatus.streaming) {
-      console.log("User is not streaming:", streamingStatus);
+    const currentStreamId = getCurrentStreamId();
+    if (!currentStreamId) {
+      console.log("User is not streaming");
       return;
     }
-    console.log("Updating stream with OpenTok streamId:", openTokStreamId);
-    const stream = await updateStream(pool.poolId, streamingStatus.streamId, openTokStreamId);
-    console.log("Updated stream with OpenTok sessionId:", stream);
+    await updateStream(pool.poolId, currentStreamId, openTokStreamId);
   }
 
   function startOpenTokPublishing() {
@@ -109,10 +125,12 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   async function stopStreaming(poolId, streamId) {
+    console.log("Stopping streaming");
     return API.del("pools", `/${poolId}/streams/${streamId}`);
   }
 
   async function updateStream(poolId, streamId, openTokStreamId) {
+    console.log("Updating stream with OpenTok streamId:", openTokStreamId);
     return API.put("pools", `/${poolId}/streams/${streamId}`, {
       body: {
         openTokStreamId: openTokStreamId
@@ -121,49 +139,37 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   async function handleStartStreaming() {
-    if (streamingStatus.streaming) {
+    const currentStreamId = getCurrentStreamId();
+    if (currentStreamId) {
       throw new Error("Already streaming");
     }
 
     try {
       setIsProcessing(true);
       const stream = await startStreaming(pool.poolId);
-      streamingStatus.streaming = stream.streaming;
-      streamingStatus.streamId = stream.streamId;
-      streamingStatus.openTokToken = stream.openTokToken;
-      setStreamingStatus(streamingStatus);
-      setupStreaming(streamingStatus);
-      setIsProcessing(false);
+      updateCurrentStreamId(stream.streamId);
+      setupStreaming(stream.streamId);
     } catch (e) {
       onError(e);
-      setIsProcessing(false);
     }
-  }
-
-  function setStreamingStatus(streamingStatus) {
-    console.log("New streaming status:", streamingStatus);
-    streamingStatusCallback(streamingStatus);
+    setIsProcessing(false);
   }
 
   async function handleStopStreaming(event) {
-    event.preventDefault();
-
-    if (!streamingStatus.streaming) {
+    const currentStreamId = getCurrentStreamId();
+    if (!currentStreamId) {
       throw new Error("Not streaming");
     }
 
     try {
       setIsProcessing(true);
-      await stopStreaming(pool.poolId, streamingStatus.streamId);
-      streamingStatus.streaming = false;
-      streamingStatus.streamId = null;
-      setStreamingStatus(streamingStatus);
-      setupStreaming(streamingStatus);
-      setIsProcessing(false);
+      await stopStreaming(pool.poolId, currentStreamId);
+      updateCurrentStreamId(null);
+      setupStreaming(null);
     } catch (e) {
       onError(e);
-      setIsProcessing(false);
     }
+    setIsProcessing(false);
   }
 
   function getPreviewStyle(windowDimensions, videoDimensions) {
@@ -182,7 +188,7 @@ export default function StreamingStatus({pool, streamingStatus, streamingStatusC
   }
 
   return (
-    streamingStatus.streaming ? (
+    currentStreamId ? (
       <>
         <Fab color="primary"
              aria-label="stop"

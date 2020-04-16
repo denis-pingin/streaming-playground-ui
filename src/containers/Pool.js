@@ -16,10 +16,14 @@ import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
 import {useWebsocketContext} from "../contexts/WebsocketContext";
 import ConfirmationDialog from "../components/ConfirmationDialog";
+import CardHeader from "@material-ui/core/CardHeader";
 
 const useStyles = makeStyles((theme) => ({
   card: {
     minWidth: 250,
+  },
+  videoHeader: {
+    paddingTop: 0
   }
 }));
 
@@ -30,7 +34,6 @@ export default function Pool() {
   const {userInfo} = useAuthContext();
   const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff,} = useWebsocketContext();
   const {openTokStartSession, openTokStopSession} = useOpenTokContext();
-  const [streamingStatus, setStreamingStatus] = useState(null);
   const [pool, setPool] = useState(null);
   const [streams, setStreams] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,8 +46,10 @@ export default function Pool() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [, setResizeState] = useState(null);
   const gridItemRefs = useRef([]);
-  const streamingStatusRef = useRef(streamingStatus);
+  const [currentStreamId, setCurrentStreamId] = useState(null);
+  const currentStreamIdRef = useRef(currentStreamId);
 
+  // Set gridItemRefs array size based on stream count
   if (streams) {
     if (gridItemRefs.current.length !== streams.length) {
       gridItemRefs.current = Array(streams.length).fill().map((_, i) => gridItemRefs.current[i] || createRef());
@@ -83,47 +88,50 @@ export default function Pool() {
   }
 
   function startOpenTokSession(openTokSessionConfig, openTokToken) {
+    console.log("Pool: starting new OpenTok session");
     openTokStartSession(openTokSessionConfig.apiKey, openTokSessionConfig.sessionId, openTokToken, function (event) {
-      console.log("Received OpenTok event:", event);
       switch (event.type) {
         case "sessionConnected":
-          console.log("OpenTok session connected:", event);
+          console.log("Pool: OpenTok session connected:", event);
           setIsOpenTokSessionConnected(true);
           break;
         case "streamCreated":
-          console.log("New OpenTok stream created:", event);
+          console.log("Pool: new OpenTok stream created:", event);
           openTokStreams[event.stream.id] = event.stream;
           setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: event.stream}));
           break;
         case "streamDestroyed":
-          console.log("New OpenTok stream destroyed:", event);
+          console.log("Pool: OpenTok stream destroyed:", event);
           setOpenTokStreams(openTokStreams => ({...openTokStreams, [event.stream.id]: null}));
           break;
+        default:
+          console.log("Pool: received unexpected OpenTok event:", event);
       }
     });
   }
 
   function stopOpenTokSession() {
+    console.log("Pool: stopping OpenTok session");
     openTokStopSession();
   }
 
-  function getStreamingStatus() {
-    return streamingStatusRef.current;
+  function getCurrentStreamId() {
+    return currentStreamIdRef.current;
   }
 
-  function updateStreamingStatus(streamingStatus) {
-    console.log("Got updated streaming status:", streamingStatus);
-    streamingStatusRef.current = streamingStatus;
-    setStreamingStatus(streamingStatus);
+  function updateCurrentStreamId(currentStreamId) {
+    console.log("Pool: updated currentStreamId:", currentStreamId);
+    currentStreamIdRef.current = currentStreamId;
+    setCurrentStreamId(currentStreamId);
   }
 
   function updateStreams(event) {
     loadStreams().then((streams) => {
-      const streamingStatus = getStreamingStatus();
-      console.log("Loaded streams:", streams, streamingStatus);
-      if (streamingStatus && streamingStatus.streaming) {
+      const currentStreamId = getCurrentStreamId();
+      console.log("Loaded streams:", streams);
+      if (currentStreamId) {
         streams.forEach((stream) => {
-          stream.own = stream.streamId === streamingStatus.streamId;
+          stream.own = stream.streamId === currentStreamId;
         });
       }
       setStreams(streams)
@@ -131,9 +139,8 @@ export default function Pool() {
   }
 
   function handleUserProfileUpdated(event) {
-    console.log("Received userProfileUpdated event:", event);
     if (event.data && event.data.streamingStatus) {
-      updateStreamingStatus(event.data.streamingStatus);
+      updateCurrentStreamId(event.data.streamingStatus.streamId);
     }
   }
 
@@ -159,7 +166,6 @@ export default function Pool() {
 
   useEffect(() => {
     function tryEnterPool() {
-      console.log("Try enter pool:", getIsInPool(), pool, websocketIsConnected())
       if (!getIsInPool() && pool && websocketIsConnected()) {
         console.log("Entering pool");
         websocketSubscribe("streamCreated", updateStreams);
@@ -174,7 +180,6 @@ export default function Pool() {
     }
 
     function tryExitPool() {
-      console.log("Try exit pool:", getIsInPool(), pool, websocketIsConnected())
       if (getIsInPool() && pool && websocketIsConnected()) {
         console.log("Exiting pool");
         websocketUnsubscribe("streamCreated", updateStreams);
@@ -189,7 +194,6 @@ export default function Pool() {
     }
 
     function websocketCallback() {
-      console.log("Websocket callback:", pool, websocketIsConnected());
       tryEnterPool();
     }
 
@@ -212,7 +216,7 @@ export default function Pool() {
 
         const streamingStatus = (await loadUserProfile()).streamingStatus;
         console.log("Loaded streaming status:", streamingStatus);
-        updateStreamingStatus(streamingStatus);
+        updateCurrentStreamId(streamingStatus.streamId);
 
         if (pool.openTokSessionConfig && streamingStatus.openTokToken) {
           console.log("Starting OpenTok session");
@@ -290,17 +294,12 @@ export default function Pool() {
             <Card className={classes.card}>
               {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
               <CardContent ref={gridItemRefs.current[i]}>
-                <Typography component="h1" variant="h5" color="textPrimary" gutterBottom>
-                  {stream.name}
-                </Typography>
-                <Typography component="h1" variant="h6" color="textSecondary">
-                  {"Created: " + new Date(stream.createdAt).toLocaleString()}
-                </Typography>
                 {/*{console.log("Rendering:", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetWidth : "no parent", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetHeight : "no parent")}*/}
                 {gridItemRefs.current[i] && stream.openTokStreamId && openTokStreams[stream.openTokStreamId] &&
                 <StreamView id={stream.openTokStreamId} width={getStreamViewWidth()} height={getStreamViewHeight()}
                             stream={openTokStreams[stream.openTokStreamId]}/>}
               </CardContent>
+              <CardHeader className={classes.videoHeader} title={stream.name} subheader={"Created: " + new Date(stream.createdAt).toLocaleString()}/>
               {/*</Link>*/}
             </Card>
           </Grid>
@@ -329,11 +328,11 @@ export default function Pool() {
             </Fab>
           </Grid>
         </>}
-        {isOpenTokSessionConnectedState && pool && streamingStatus && <Grid item>
+        {isOpenTokSessionConnectedState && pool && <Grid item>
           <StreamingStatus
             pool={pool}
-            streamingStatus={streamingStatus}
-            streamingStatusCallback={updateStreamingStatus}/>
+            streamId={currentStreamId}
+            streamIdUpdated={updateCurrentStreamId}/>
         </Grid>}
         <Grid item>
           <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>

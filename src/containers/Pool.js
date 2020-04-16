@@ -22,16 +22,14 @@ export default function Pool() {
   const {poolId} = useParams();
   const history = useHistory();
   const {userInfo} = useAuthContext();
-  const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff,} = useWebsocketContext();
-  const {openTokStartSession, openTokStopSession} = useOpenTokContext();
+  const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff} = useWebsocketContext();
+  const {openTokStartSession, openTokStopSession, openTokIsSessionConnected} = useOpenTokContext();
   const [pool, setPool] = useState(null);
   const [streams, setStreams] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isMyPool, setIsMyPool] = useState(false);
   const isInPool = useRef(false);
-  const isOpenTokSessionConnected = useRef(false);
-  const [isOpenTokSessionConnectedState, setIsOpenTokSessionConnectedState] = useState(false);
+  const [isOpenTokSessionConnected, setIsOpenTokSessionConnected] = useState(openTokIsSessionConnected());
   const [openTokStreams, setOpenTokStreams] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [, setResizeState] = useState(null);
@@ -44,17 +42,6 @@ export default function Pool() {
 
   function setIsInPool(value) {
     isInPool.current = value;
-  }
-
-  function getIsOpenTokSessionConnected() {
-    console.log("Current session connected state:", isOpenTokSessionConnected.current);
-    return isOpenTokSessionConnected.current;
-  }
-
-  function setIsOpenTokSessionConnected(value) {
-    console.log("Setting session connected state");
-    isOpenTokSessionConnected.current = value;
-    setIsOpenTokSessionConnectedState(value);
   }
 
   function loadUserProfile() {
@@ -75,7 +62,7 @@ export default function Pool() {
       switch (event.type) {
         case "sessionConnected":
           console.log("Pool: OpenTok session connected:", event);
-          setIsOpenTokSessionConnected(true);
+          setIsOpenTokSessionConnected(openTokIsSessionConnected());
           break;
         case "streamCreated":
           console.log("Pool: new OpenTok stream created:", event);
@@ -90,11 +77,6 @@ export default function Pool() {
           console.log("Pool: received unexpected OpenTok event:", event);
       }
     });
-  }
-
-  function stopOpenTokSession() {
-    console.log("Pool: stopping OpenTok session");
-    openTokStopSession();
   }
 
   function getCurrentStreamId() {
@@ -214,9 +196,9 @@ export default function Pool() {
 
     onLoad();
     return function cleanup() {
-      if (getIsOpenTokSessionConnected()) {
-        console.log("About to stop OpenTok session");
-        stopOpenTokSession();
+      if (openTokIsSessionConnected()) {
+        console.log("Cleaning up OpenTok session");
+        openTokStopSession();
       }
     };
   }, []);
@@ -232,13 +214,13 @@ export default function Pool() {
   async function handleDeleteConfirmation(result) {
     setShowDeleteConfirmation(false);
     if (result) {
-      setIsDeleting(true);
+      setIsLoading(true);
       try {
         await deletePool();
         history.push("/");
       } catch (e) {
         onError(e);
-        setIsDeleting(false);
+        setIsLoading(false);
       }
     }
   }
@@ -276,11 +258,13 @@ export default function Pool() {
             </Fab>
           </Grid>
         </>}
-        {isOpenTokSessionConnectedState && pool && <Grid item>
+        {isOpenTokSessionConnected && pool && <Grid item>
           <StreamingStatus
             pool={pool}
             streamId={currentStreamId}
-            streamIdUpdated={updateCurrentStreamId}/>
+            streamIdUpdated={updateCurrentStreamId}
+            disabled={isLoading}
+          />
         </Grid>}
         <Grid item>
           <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>

@@ -14,6 +14,7 @@ import {useOpenTokContext} from "../contexts/OpenTokContext";
 import {useWebsocketContext} from "../contexts/WebsocketContext";
 import ConfirmationDialog from "../components/ConfirmationDialog";
 import StreamCard from "../components/StreamCard";
+import {useSnackbar} from 'notistack';
 
 const useStyles = makeStyles((theme) => ({}));
 
@@ -21,6 +22,7 @@ export default function Pool() {
   const classes = useStyles();
   const {poolId} = useParams();
   const history = useHistory();
+  const {enqueueSnackbar} = useSnackbar();
   const {userInfo} = useAuthContext();
   const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff} = useWebsocketContext();
   const {openTokStartSession, openTokStopSession, openTokIsSessionConnected} = useOpenTokContext();
@@ -50,6 +52,10 @@ export default function Pool() {
 
   function loadPool() {
     return API.get("pools", `/${poolId}`);
+  }
+
+  function deletePool() {
+    return API.del("pools", `/${poolId}`);
   }
 
   function loadStreams() {
@@ -108,6 +114,7 @@ export default function Pool() {
     }
   }
 
+  // Resize listener and pool ownership update
   useEffect(() => {
     function handleResize() {
       setResizeState({
@@ -128,6 +135,7 @@ export default function Pool() {
     }
   });
 
+  // Pool registration / unregistration
   useEffect(() => {
     function tryEnterPool() {
       if (!getIsInPool() && pool && websocketIsConnected()) {
@@ -170,23 +178,28 @@ export default function Pool() {
     }
   }, [pool]);
 
+  // Init / cleanup once
   useEffect(() => {
     async function onLoad() {
       console.log("Pool load starting");
       try {
+        // Load pool
         const pool = await loadPool();
         console.log("Loaded pool:", pool);
         setPool(pool);
 
+        // Load streaming status
         const streamingStatus = (await loadUserProfile()).streamingStatus;
         console.log("Loaded streaming status:", streamingStatus);
         updateCurrentStreamId(streamingStatus.streamId);
 
+        // Create OpenTok session
         if (pool.openTokSessionConfig && streamingStatus.openTokToken) {
           console.log("Starting OpenTok session");
           startOpenTokSession(pool.openTokSessionConfig, streamingStatus.openTokToken);
         }
 
+        // Load streams
         updateStreams();
         console.log("Pool load done");
       } catch (e) {
@@ -196,16 +209,13 @@ export default function Pool() {
 
     onLoad();
     return function cleanup() {
+      // Cleanup OpenTok session
       if (openTokIsSessionConnected()) {
         console.log("Cleaning up OpenTok session");
         openTokStopSession();
       }
     };
   }, []);
-
-  function deletePool() {
-    return API.del("pools", `/${poolId}`);
-  }
 
   async function handleDelete(event) {
     setShowDeleteConfirmation(true);
@@ -217,6 +227,7 @@ export default function Pool() {
       setIsLoading(true);
       try {
         await deletePool();
+        enqueueSnackbar(`Pool ${pool.name} deleted`, 'success');
         history.push("/");
       } catch (e) {
         onError(e);

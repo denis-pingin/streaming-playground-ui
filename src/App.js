@@ -5,12 +5,12 @@ import {onError} from "./libs/errorLib";
 import "./App.css";
 import {useAuthContext} from "./contexts/AuthContext";
 import Box from "@material-ui/core/Box";
-import Copyright from "./components/Copyright";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Bar from "./containers/Bar";
 import Routes from "./Routes";
 import {useWebsocketContext} from "./contexts/WebsocketContext";
 import config from './config';
+import {SnackbarProvider} from 'notistack';
 
 function App() {
   const history = useHistory();
@@ -48,11 +48,12 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Bar logout={handleLogout}/>
-      <Box my={2}>
-        <Routes/>
-        {/*<Copyright/>*/}
-      </Box>
+      <SnackbarProvider maxSnack={4}>
+        <Bar logout={handleLogout}/>
+        <Box my={2}>
+          <Routes/>
+        </Box>
+      </SnackbarProvider>
     </ErrorBoundary>
   );
 }

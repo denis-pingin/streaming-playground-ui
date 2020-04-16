@@ -7,6 +7,7 @@ import makeStyles from "@material-ui/core/styles/makeStyles";
 import Fab from "@material-ui/core/Fab";
 import VideocamIcon from "@material-ui/icons/Videocam";
 import VideocamOffIcon from "@material-ui/icons/VideocamOff";
+import {useSnackbar} from "notistack";
 
 const useStyles = makeStyles((theme) => ({
   videoPreview: {
@@ -23,6 +24,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function StreamingStatus({pool, streamId, streamIdUpdated, ...props}) {
   const classes = useStyles();
+  const {enqueueSnackbar} = useSnackbar();
   const {userInfo} = useAuthContext();
   const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,7 +72,9 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
 
   useEffect(() => {
     return function cleanup() {
-      stopOpenTokPublishing();
+      if (openTokIsPublishing()) {
+        stopOpenTokPublishing();
+      }
     };
   }, []);
 
@@ -103,6 +107,7 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
         case "streamCreated":
           console.log("OpenTok publishing stream created:", event);
           setVideoDimensions(event.stream.videoDimensions);
+          enqueueSnackbar("You are now LIVE!");
           handlePublishingStarted(event.stream.id);
           break;
         default:
@@ -113,6 +118,7 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
 
   function stopOpenTokPublishing() {
     openTokStopPublishing()
+    enqueueSnackbar("Streaming stopped");
   }
 
   async function startStreaming(poolId) {

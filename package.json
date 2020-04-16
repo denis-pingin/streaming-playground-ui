@@ -8,6 +8,7 @@
     "@opentok/client": "^2.17.0",
     "@sentry/browser": "^5.15.4",
     "aws-amplify": "^3.0.7",
+    "notistack": "^0.9.9",
     "react": "^16.13.1",
     "react-context-hook": "^2.1.0",
     "react-dom": "^16.13.1",

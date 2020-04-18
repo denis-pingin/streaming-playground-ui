@@ -20,8 +20,8 @@
     "typeface-roboto": "0.0.75"
   },
   "scripts": {
-    "start": "BROWSER=false react-scripts start --no-cache --inspect-brk --verbose=false --runInBand",
-    "start-https": "BROWSER=false HTTPS=true react-scripts start --no-cache --inspect-brk --verbose=false --runInBand",
+    "start": "REACT_APP_STAGE=offline BROWSER=false react-scripts start --no-cache --inspect-brk --verbose=false --runInBand",
+    "start-https": "REACT_APP_STAGE=offline BROWSER=false HTTPS=true react-scripts start --no-cache --inspect-brk --verbose=false --runInBand",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "deploy": "./sync-s3.sh",

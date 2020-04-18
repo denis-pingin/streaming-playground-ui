@@ -1,5 +1,26 @@
+const offline = {
+  STRIPE_KEY: "",
+  s3: {
+    REGION: "localhost",
+    BUCKET: ""
+  },
+  apiGateway: {
+    REGION: "localhost",
+    URL: "http://localhost:4000/offline"
+  },
+  cognito: {
+    REGION: "localhost",
+    USER_POOL_ID: "eu-central-1_xxxxxxxxx",
+    APP_CLIENT_ID: "offlineAppClientId",
+    IDENTITY_POOL_ID: "offlineIdentityPoolId"
+  },
+  websocket: {
+    URL: "ws://localhost:4001"
+  }
+};
+
 const dev = {
-  STRIPE_KEY: "pk_test_v1amvR35uoCNduJfkqGB8RLD",
+  STRIPE_KEY: "",
   s3: {
     REGION: "eu-central-1",
     BUCKET: "streaming-playground-api-dev-attachmentsbucket-ny4fj5oz3abo"
@@ -20,7 +41,7 @@ const dev = {
 };
 
 const prod = {
-  STRIPE_KEY: "pk_test_v1amvR35uoCNduJfkqGB8RLD",
+  STRIPE_KEY: "",
   s3: {
     REGION: "eu-central-1",
     BUCKET: ""
@@ -41,9 +62,11 @@ const prod = {
 };
 
 // Default to dev if not set
-const config = process.env.REACT_APP_STAGE === 'prod'
-  ? prod
-  : dev;
+const config = process.env.REACT_APP_STAGE === 'offline'
+  ? offline
+  : process.env.REACT_APP_STAGE === 'prod'
+    ? prod
+    : dev;
 
 export default {
   // Add common config values here

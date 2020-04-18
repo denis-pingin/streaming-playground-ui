@@ -14,8 +14,42 @@ import {MuiThemeProvider} from "@material-ui/core";
 import "typeface-roboto";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import {WebsocketContextProvider} from "./contexts/WebsocketContext";
+import {
+  CognitoAccessToken,
+  CognitoIdToken,
+  CognitoRefreshToken
+} from "amazon-cognito-identity-js";
+import { Auth } from "aws-amplify";
+import { Credentials } from "@aws-amplify/core";
 
 initSentry();
+
+// If working offline, send a hardcoded identity
+if (process.env.REACT_APP_STAGE === "offline") {
+  console.log("Using offline authentication");
+
+  Credentials.get = () => Promise.resolve("pizza");
+  Auth.currentUserInfo = () => {
+    console.log("Auth.currentUserInfo");
+    return Promise.resolve({
+      id: "offliner",
+      attributes: {
+        name: "Offliner",
+        email: "offline@playpool.cc"
+      }
+    });
+  }
+
+  Auth.currentSession = () => {
+    console.log("Auth.currentSession");
+    return Promise.resolve({
+      getAccessToken: () => new CognitoAccessToken({ AccessToken: "testAccessToken" }),
+      getIdToken: () => new CognitoIdToken({ IdToken: "testIdToken" }),
+      getRefreshToken: () => new CognitoRefreshToken({ RefreshToken: "testRefreshToken" }),
+      isValid: () => true,
+    });
+  }
+}
 
 Amplify.configure({
   Auth: {

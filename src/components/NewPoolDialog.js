@@ -6,16 +6,25 @@ import Button from "@material-ui/core/Button";
 import React, {useEffect, useState} from "react";
 import {onError} from "../libs/errorLib";
 import Dialog from "@material-ui/core/Dialog";
-import {API} from "aws-amplify";
 import {useFormFields} from "../libs/hooksLib";
 import {useHistory} from "react-router-dom";
+import {useSnackbar} from "notistack";
+import {useMutation} from 'react-apollo';
+import {CREATE_POOL_MUTATION} from "../graphql/pool";
 
 export default function NewPoolDialog({open, openStateChanged}) {
   const history = useHistory();
-  const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(open);
   const [fields, handleFieldChange] = useFormFields({
     name: ""
+  });
+  const {enqueueSnackbar} = useSnackbar();
+  const [createPool, { loading }] = useMutation(CREATE_POOL_MUTATION, {
+    onCompleted: (data) => {
+      console.log("Pool created:", data);
+      enqueueSnackbar(`Pool ${data.createPool.name} created`, 'success');
+      history.push(`/pools/${data.createPool.poolId}`);
+    }
   });
 
   useEffect(() => {
@@ -27,27 +36,20 @@ export default function NewPoolDialog({open, openStateChanged}) {
   });
 
   function validateForm() {
-    return fields.name.length > 3;
-  }
-
-  async function createPool(name) {
-    return API.post("pools", "/", {
-      body: {
-        name: name
-      }
-    });
+    return fields.name.length >= 3;
   }
 
   async function handleCreatePool(event) {
     event.preventDefault();
-    setIsLoading(true);
     try {
-      const pool = await createPool(fields.name);
-      history.push(`/pools/${pool.poolId}`);
+      createPool({
+        variables: {
+          name: fields.name
+        }
+      });
     } catch (e) {
       onError(e);
     }
-    setIsLoading(false);
   }
 
   function handleClose() {
@@ -78,7 +80,7 @@ export default function NewPoolDialog({open, openStateChanged}) {
           <Button
             type="submit"
             color="primary"
-            disabled={!validateForm()}
+            disabled={loading || !validateForm()}
           >
             Create
           </Button>

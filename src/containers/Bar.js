@@ -58,7 +58,7 @@ export default function Bar({logout, ...props}) {
           </Link>
         </Typography>
 
-        {isAuthenticated && (
+        {isAuthenticated() && (
           <>
             <IconButton color="inherit" onClick={handleOpenMenu}>
               <UserAvatar/>

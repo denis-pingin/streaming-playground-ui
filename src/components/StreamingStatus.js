@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from "react";
 import {onError} from "../libs/errorLib";
-import {API} from "aws-amplify";
 import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
 import makeStyles from "@material-ui/core/styles/makeStyles";
@@ -8,6 +7,12 @@ import Fab from "@material-ui/core/Fab";
 import VideocamIcon from "@material-ui/icons/Videocam";
 import VideocamOffIcon from "@material-ui/icons/VideocamOff";
 import {useSnackbar} from "notistack";
+import {useMutation} from 'react-apollo';
+import {
+  START_STREAMING_MUTATION,
+  STOP_STREAMING_MUTATION,
+  UPDATE_STREAM_OPEN_TOK_STREAM_ID_MUTATION
+} from "../graphql/stream";
 
 const useStyles = makeStyles((theme) => ({
   videoPreview: {
@@ -22,26 +27,38 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function StreamingStatus({pool, streamId, streamIdUpdated, ...props}) {
+export default function StreamingStatus({pool, streamIdUpdated, ...props}) {
   const classes = useStyles();
   const {enqueueSnackbar} = useSnackbar();
-  const {userInfo} = useAuthContext();
+  const {getUserInfo} = useAuthContext();
   const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState(null);
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight
   });
-  const [currentStreamId, setCurrentStreamId] = useState(streamId);
+  const [currentStreamId, setCurrentStreamId] = useState(null);
   const currentStreamIdRef = useRef(currentStreamId);
+  const [startStreaming, { startStreamingLoading }] = useMutation(START_STREAMING_MUTATION, {
+    onCompleted: (data) => {
+      updateCurrentStreamId(data.startStreaming.streamId);
+      setupStreaming(data.startStreaming.streamId);
+    }
+  });
+  const [stopStreaming, { stopStreamingLoading }] = useMutation(STOP_STREAMING_MUTATION, {
+    onCompleted: (data) => {
+      updateCurrentStreamId(null);
+      setupStreaming(null);
+    }
+  });
+  const [updateStreamOpenTokStreamId, { updateStreamOpenTokStreamIdLoading }] = useMutation(UPDATE_STREAM_OPEN_TOK_STREAM_ID_MUTATION);
 
   function getCurrentStreamId() {
     return currentStreamIdRef.current;
   }
 
   function updateCurrentStreamId(currentStreamId) {
-    console.log("Pool: updated currentStreamId:", currentStreamId);
+    console.log("StreamingStatus: updated currentStreamId:", currentStreamId);
     currentStreamIdRef.current = currentStreamId;
     setCurrentStreamId(currentStreamId);
     streamIdUpdated(currentStreamId)
@@ -61,14 +78,6 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
       onError(e);
     }
   }
-
-  useEffect(() => {
-    function init() {
-      updateCurrentStreamId(currentStreamId);
-      setupStreaming(currentStreamId);
-    }
-    init();
-  }, [currentStreamId, openTokIsSessionConnected()]);
 
   useEffect(() => {
     return function cleanup() {
@@ -98,7 +107,13 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
       console.log("User is not streaming");
       return;
     }
-    await updateStream(pool.poolId, currentStreamId, openTokStreamId);
+    updateStreamOpenTokStreamId({
+      variables: {
+        poolId: pool.poolId,
+        streamId: currentStreamId,
+        openTokStreamId: openTokStreamId
+      }
+    });
   }
 
   function startOpenTokPublishing() {
@@ -121,29 +136,6 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
     enqueueSnackbar("Streaming stopped");
   }
 
-  async function startStreaming(poolId) {
-    console.log("Starting streaming", userInfo);
-    return API.post("pools", `/${poolId}/streams`, {
-      body: {
-        name: userInfo.attributes.name
-      }
-    });
-  }
-
-  async function stopStreaming(poolId, streamId) {
-    console.log("Stopping streaming");
-    return API.del("pools", `/${poolId}/streams/${streamId}`);
-  }
-
-  async function updateStream(poolId, streamId, openTokStreamId) {
-    console.log("Updating stream with OpenTok streamId:", openTokStreamId);
-    return API.put("pools", `/${poolId}/streams/${streamId}`, {
-      body: {
-        openTokStreamId: openTokStreamId
-      }
-    });
-  }
-
   async function handleStartStreaming() {
     const currentStreamId = getCurrentStreamId();
     if (currentStreamId) {
@@ -151,31 +143,33 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
     }
 
     try {
-      setIsProcessing(true);
-      const stream = await startStreaming(pool.poolId);
-      updateCurrentStreamId(stream.streamId);
-      setupStreaming(stream.streamId);
+      startStreaming({
+        variables: {
+          poolId: pool.poolId,
+          name: getUserInfo().attributes.name
+        }
+      });
     } catch (e) {
       onError(e);
     }
-    setIsProcessing(false);
   }
 
-  async function handleStopStreaming(event) {
+  async function handleStopStreaming() {
     const currentStreamId = getCurrentStreamId();
     if (!currentStreamId) {
       throw new Error("Not streaming");
     }
 
     try {
-      setIsProcessing(true);
-      await stopStreaming(pool.poolId, currentStreamId);
-      updateCurrentStreamId(null);
-      setupStreaming(null);
+      stopStreaming({
+        variables: {
+          poolId: pool.poolId,
+          streamId: currentStreamId
+        }
+      });
     } catch (e) {
       onError(e);
     }
-    setIsProcessing(false);
   }
 
   function getPreviewStyle(windowDimensions, videoDimensions) {
@@ -193,6 +187,10 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
     };
   }
 
+  function isLoading() {
+    return startStreamingLoading || stopStreamingLoading || updateStreamOpenTokStreamIdLoading;
+  }
+
   return (
     currentStreamId ? (
       <>
@@ -200,7 +198,7 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
              aria-label="stop"
              size="medium"
              onClick={handleStopStreaming}
-             disabled={isProcessing}>
+             disabled={isLoading()}>
           <VideocamOffIcon/>
         </Fab>
         <div className={classes.videoPreview} style={getPreviewStyle(windowDimensions, videoDimensions)}>
@@ -212,7 +210,7 @@ export default function StreamingStatus({pool, streamId, streamIdUpdated, ...pro
            aria-label="start"
            size="medium"
            onClick={handleStartStreaming}
-           disabled={isProcessing}>
+           disabled={isLoading()}>
         <VideocamIcon/>
       </Fab>
     )

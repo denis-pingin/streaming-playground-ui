@@ -8,7 +8,7 @@ export default function AuthenticatedRoute({children, ...rest}) {
 
   return (
     <Route {...rest}>
-      {isAuthenticated ? (
+      {isAuthenticated() ? (
         children
       ) : (
         <Redirect to={

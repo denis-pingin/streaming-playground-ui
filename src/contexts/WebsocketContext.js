@@ -1,5 +1,7 @@
 import React, {useContext, useRef, useState} from "react";
-
+/*
+ *  NOT USED
+ */
 const WebsocketContext = React.createContext([
   {
     websocket: null,

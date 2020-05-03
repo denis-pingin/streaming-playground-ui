@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {Amplify} from 'aws-amplify';
+import {Amplify, Auth} from 'aws-amplify';
 import {BrowserRouter as Router} from 'react-router-dom';
 import './index.css';
 import App from './App';
@@ -13,14 +13,8 @@ import theme from './theme';
 import {MuiThemeProvider} from "@material-ui/core";
 import "typeface-roboto";
 import CssBaseline from "@material-ui/core/CssBaseline";
-import {WebsocketContextProvider} from "./contexts/WebsocketContext";
-import {
-  CognitoAccessToken,
-  CognitoIdToken,
-  CognitoRefreshToken
-} from "amazon-cognito-identity-js";
-import { Auth } from "aws-amplify";
-import { Credentials } from "@aws-amplify/core";
+import {CognitoAccessToken, CognitoIdToken, CognitoRefreshToken} from "amazon-cognito-identity-js";
+import {Credentials} from "@aws-amplify/core";
 
 initSentry();
 
@@ -32,7 +26,7 @@ if (process.env.REACT_APP_STAGE === "offline") {
   Auth.currentUserInfo = () => {
     console.log("Auth.currentUserInfo");
     return Promise.resolve({
-      id: "offliner",
+      id: "offlineContext_cognitoIdentityId",
       attributes: {
         name: "Offliner",
         email: "offline@playpool.cc"
@@ -43,9 +37,9 @@ if (process.env.REACT_APP_STAGE === "offline") {
   Auth.currentSession = () => {
     console.log("Auth.currentSession");
     return Promise.resolve({
-      getAccessToken: () => new CognitoAccessToken({ AccessToken: "testAccessToken" }),
-      getIdToken: () => new CognitoIdToken({ IdToken: "testIdToken" }),
-      getRefreshToken: () => new CognitoRefreshToken({ RefreshToken: "testRefreshToken" }),
+      getAccessToken: () => new CognitoAccessToken({AccessToken: "testAccessToken"}),
+      getIdToken: () => new CognitoIdToken({IdToken: "testIdToken"}),
+      getRefreshToken: () => new CognitoRefreshToken({RefreshToken: "testRefreshToken"}),
       isValid: () => true,
     });
   }
@@ -86,9 +80,7 @@ ReactDOM.render(
     <Router>
       <AuthContextProvider>
         <OpenTokContextProvider>
-          <WebsocketContextProvider>
-            <App/>
-          </WebsocketContextProvider>
+          <App/>
         </OpenTokContextProvider>
       </AuthContextProvider>
     </Router>

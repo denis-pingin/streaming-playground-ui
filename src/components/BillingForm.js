@@ -1,8 +1,7 @@
 import React, {useState} from "react";
-import {CardElement, injectStripe} from "react-stripe-elements";
+import {injectStripe} from "react-stripe-elements";
 import {useFormFields} from "../libs/hooksLib";
 import "./BillingForm.css";
-import Button from "@material-ui/core/Button";
 
 function BillingForm({ isLoading, onSubmit, ...props }) {
   const [fields, handleFieldChange] = useFormFields({

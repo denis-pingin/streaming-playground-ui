@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from "react";
-import {Auth} from "aws-amplify";
 import {useHistory} from "react-router-dom";
 import {onError} from "./libs/errorLib";
 import "./App.css";
@@ -8,26 +7,107 @@ import Box from "@material-ui/core/Box";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Bar from "./containers/Bar";
 import Routes from "./Routes";
-import {useWebsocketContext} from "./contexts/WebsocketContext";
-import config from './config';
 import {SnackbarProvider} from 'notistack';
+import Loading from "./components/Loading";
+import {ApolloProvider} from "react-apollo";
+import {SubscriptionClient} from "subscriptions-transport-ws";
+import config from "./config";
+import {WebSocketLink} from "apollo-link-ws";
+import {HttpLink} from "apollo-link-http";
+import {ApolloLink} from "apollo-link";
+import ApolloClient from "apollo-client";
+import {defaultDataIdFromObject, InMemoryCache} from "apollo-cache-inmemory";
+import {Auth} from 'aws-amplify';
+import aws4 from "@aws-amplify/core/lib/Signer";
+
+window.LOG_LEVEL = 'DEBUG';
 
 function App() {
   const history = useHistory();
   const [isAuthenticating, setIsAuthenticating] = useState(true);
-  const {login, logout, setUserInfo} = useAuthContext();
-  const {websocketConnect, websocketDisconnect} = useWebsocketContext();
+  const {login, logout} = useAuthContext();
+  const [apolloClient, setApolloClient] = useState();
+
+  function init() {
+    const wsClient = new SubscriptionClient(
+      config.websocket.URL,
+      {
+        reconnect: true,
+        timeout: 30000
+      },
+      null,
+      [],
+    );
+
+    const hasSubscriptionOperation = ({query: {definitions}}) => {
+      return definitions.some(
+        ({kind, operation}) =>
+          kind === 'OperationDefinition' && operation === 'subscription',
+      )
+    }
+
+    const websocketLink = new WebSocketLink(wsClient);
+    websocketLink.subscriptionClient.maxConnectTimeGenerator.duration = () =>
+      websocketLink.subscriptionClient.maxConnectTimeGenerator.max
+
+    const awsGraphqlFetch = (uri, options) => {
+      options = options || {};
+      return Auth.currentCredentials().then((data) => {
+        const request = {
+          url: uri,
+          data: options.body,
+          ...options
+        }
+        const credentials = {
+          'secret_key': data.secretAccessKey,
+          'access_key': data.accessKeyId,
+          'session_token': data.sessionToken
+        };
+        const service = {
+          region: config.apiGateway.REGION,
+          service: "execute-api"
+        }
+        aws4.sign(request, credentials, service);
+        return fetch(uri, request);
+      })
+    }
+
+    const httpLink = new HttpLink({
+      uri: config.apiGateway.URL + "/graphql",
+      fetch: awsGraphqlFetch
+    });
+
+    const link = ApolloLink.split(
+      hasSubscriptionOperation,
+      websocketLink,
+      httpLink,
+    )
+
+    const apolloClient = new ApolloClient({
+      cache: new InMemoryCache({
+        dataIdFromObject: object => {
+          switch (object.__typename) {
+            case 'Pool':
+              return object.poolId;
+            case 'Stream':
+              return object.streamId;
+            case 'User':
+              return object.userId
+            default:
+              return defaultDataIdFromObject(object);
+          }
+        }
+      }),
+      link
+    });
+    setApolloClient(apolloClient);
+  }
 
   useEffect(() => {
     async function onLoad() {
       try {
-        await Auth.currentSession();
-        const userInfo = await login();
-        websocketConnect(config.websocket.URL + `?userId=${userInfo.id}`);
-        return function cleanup() {
-          console.log("Disconnecting websocket");
-          websocketDisconnect();
-        };
+        await login();
+        init();
       } catch (e) {
         if (e !== 'No current user') {
           onError(e);
@@ -41,20 +121,25 @@ function App() {
   }, []);
 
   async function handleLogout() {
-    await Auth.signOut();
     logout();
     history.push("/login");
   }
 
   return (
-    <ErrorBoundary>
-      <SnackbarProvider maxSnack={4}>
-        <Bar logout={handleLogout}/>
-        <Box my={2}>
-          <Routes/>
-        </Box>
-      </SnackbarProvider>
-    </ErrorBoundary>
+    <>
+      {apolloClient &&
+      <ApolloProvider client={apolloClient}>
+        <ErrorBoundary>
+          <SnackbarProvider maxSnack={4}>
+            <Bar logout={handleLogout}/>
+            {isAuthenticating && <Loading/>}
+            {!isAuthenticating && <Box my={2}>
+              <Routes/>
+            </Box>}
+          </SnackbarProvider>
+        </ErrorBoundary>
+      </ApolloProvider>}
+    </>
   );
 }
 

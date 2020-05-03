@@ -1,9 +1,7 @@
 import React, {useEffect, useRef, useState} from "react";
-import {API} from "aws-amplify";
 import {useHistory, useParams} from "react-router-dom";
 import {onError} from "../libs/errorLib";
 import Container from "@material-ui/core/Container";
-import makeStyles from "@material-ui/core/styles/makeStyles";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Fab from "@material-ui/core/Fab";
@@ -11,26 +9,28 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import StreamingStatus from "../components/StreamingStatus";
 import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
-import {useWebsocketContext} from "../contexts/WebsocketContext";
 import ConfirmationDialog from "../components/ConfirmationDialog";
 import StreamCard from "../components/StreamCard";
 import {useSnackbar} from 'notistack';
-
-const useStyles = makeStyles((theme) => ({}));
+import {useMutation, useQuery} from 'react-apollo';
+import Loading from "../components/Loading";
+import Error from "../components/Error";
+import {DELETE_POOL_MUTATION, POOL_DELETED_SUBSCRIPTION, POOL_QUERY, POOL_UPDATED_SUBSCRIPTION} from "../graphql/pool";
+import {
+  STREAM_UPDATED_SUBSCRIPTION,
+  STREAMING_STARTED_SUBSCRIPTION,
+  STREAMING_STOPPED_SUBSCRIPTION
+} from "../graphql/stream";
+import {STREAMING_STATUS_UPDATED_SUBSCRIPTION} from "../graphql/user";
 
 export default function Pool() {
-  const classes = useStyles();
   const {poolId} = useParams();
   const history = useHistory();
   const {enqueueSnackbar} = useSnackbar();
-  const {userInfo} = useAuthContext();
-  const {websocketSend, websocketSubscribe, websocketUnsubscribe, websocketIsConnected, websocketOn, websocketOff} = useWebsocketContext();
+  const {getUserInfo} = useAuthContext();
   const {openTokStartSession, openTokStopSession, openTokIsSessionConnected} = useOpenTokContext();
-  const [pool, setPool] = useState(null);
-  const [streams, setStreams] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isMyPool, setIsMyPool] = useState(false);
-  const isInPool = useRef(false);
   const [isOpenTokSessionConnected, setIsOpenTokSessionConnected] = useState(openTokIsSessionConnected());
   const [openTokStreams, setOpenTokStreams] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -38,33 +38,44 @@ export default function Pool() {
   const [currentStreamId, setCurrentStreamId] = useState(null);
   const currentStreamIdRef = useRef(currentStreamId);
 
-  function getIsInPool() {
-    return isInPool.current;
-  }
+  // Pool query
+  const {loading, error, data, subscribeToMore} = useQuery(POOL_QUERY, {
+    variables: {
+      poolId: poolId
+    },
+    onCompleted: (data) => {
+      console.log("Loaded pool data:", data);
 
-  function setIsInPool(value) {
-    isInPool.current = value;
-  }
+      // Create OpenTok session
+      if (data.pool.openTokSessionConfig && data.pool.openTokSessionConfig.openTokToken) {
+        console.log("Starting OpenTok session");
+        startOpenTokSession(data.pool.openTokSessionConfig);
+      }
+    },
+    onError: (error) => {
+      console.log(error);
+      enqueueSnackbar(`Failed to retrieve pool: ${error}`, 'error');
+    }
+  });
 
-  function loadUserProfile() {
-    return API.get("user", `/profile`);
-  }
+  // Delete pool mutation
+  const [deletePool, {deletePoolLoading}] = useMutation(DELETE_POOL_MUTATION, {
+    variables: {
+      poolId: poolId
+    },
+    onCompleted: (data) => {
+      enqueueSnackbar(`Pool ${data.deletePool.name} deleted`, 'success');
+      history.push("/");
+    },
+    onError: (error) => {
+      console.log(error);
+      enqueueSnackbar(`Failed to delete pool ${data.deletePool.name}: ${error}`, 'error');
+    }
+  });
 
-  function loadPool() {
-    return API.get("pools", `/${poolId}`);
-  }
-
-  function deletePool() {
-    return API.del("pools", `/${poolId}`);
-  }
-
-  function loadStreams() {
-    return API.get("pools", `/${poolId}/streams`);
-  }
-
-  function startOpenTokSession(openTokSessionConfig, openTokToken) {
+  function startOpenTokSession(openTokSessionConfig) {
     console.log("Pool: starting new OpenTok session");
-    openTokStartSession(openTokSessionConfig.apiKey, openTokSessionConfig.sessionId, openTokToken, function (event) {
+    openTokStartSession(openTokSessionConfig.apiKey, openTokSessionConfig.sessionId, openTokSessionConfig.openTokToken, function (event) {
       switch (event.type) {
         case "sessionConnected":
           console.log("Pool: OpenTok session connected:", event);
@@ -95,25 +106,6 @@ export default function Pool() {
     setCurrentStreamId(currentStreamId);
   }
 
-  function updateStreams(event) {
-    loadStreams().then((streams) => {
-      const currentStreamId = getCurrentStreamId();
-      console.log("Loaded streams:", streams);
-      if (currentStreamId) {
-        streams.forEach((stream) => {
-          stream.own = stream.streamId === currentStreamId;
-        });
-      }
-      setStreams(streams)
-    });
-  }
-
-  function handleUserProfileUpdated(event) {
-    if (event.data && event.data.streamingStatus) {
-      updateCurrentStreamId(event.data.streamingStatus.streamId);
-    }
-  }
-
   // Resize listener and pool ownership update
   useEffect(() => {
     function handleResize() {
@@ -128,86 +120,130 @@ export default function Pool() {
       setIsMyPool(ownPool);
     }
 
-    checkPoolOwnership(pool, userInfo);
+    if (!loading && !error) {
+      checkPoolOwnership(data.pool, getUserInfo());
+    }
     window.addEventListener('resize', handleResize)
     return function cleanup() {
       window.removeEventListener('resize', handleResize);
     }
   });
 
-  // Pool registration / unregistration
-  useEffect(() => {
-    function tryEnterPool() {
-      if (!getIsInPool() && pool && websocketIsConnected()) {
-        console.log("Entering pool");
-        websocketSubscribe("streamCreated", updateStreams);
-        websocketSubscribe("streamUpdated", updateStreams);
-        websocketSubscribe("streamDeleted", updateStreams);
-        websocketSubscribe("userProfileUpdated", handleUserProfileUpdated);
-        websocketSend("enterPool", {
-          poolId: pool.poolId
-        });
-        setIsInPool(true);
-      }
-    }
-
-    function tryExitPool() {
-      if (getIsInPool() && pool && websocketIsConnected()) {
-        console.log("Exiting pool");
-        websocketUnsubscribe("streamCreated", updateStreams);
-        websocketUnsubscribe("streamUpdated", updateStreams);
-        websocketUnsubscribe("streamDeleted", updateStreams);
-        websocketUnsubscribe("userProfileUpdated", handleUserProfileUpdated);
-        websocketSend("exitPool", {
-          poolId: pool.poolId
-        });
-        setIsInPool(false);
-      }
-    }
-
-    function websocketCallback() {
-      tryEnterPool();
-    }
-
-    websocketOn(websocketCallback);
-    tryEnterPool();
-
-    return function cleanup() {
-      websocketOff(websocketCallback);
-      tryExitPool();
-    }
-  }, [pool]);
-
   // Init / cleanup once
   useEffect(() => {
-    async function onLoad() {
-      console.log("Pool load starting");
-      try {
-        // Load pool
-        const pool = await loadPool();
-        console.log("Loaded pool:", pool);
-        setPool(pool);
-
-        // Load streaming status
-        const streamingStatus = (await loadUserProfile()).streamingStatus;
-        console.log("Loaded streaming status:", streamingStatus);
-        updateCurrentStreamId(streamingStatus.streamId);
-
-        // Create OpenTok session
-        if (pool.openTokSessionConfig && streamingStatus.openTokToken) {
-          console.log("Starting OpenTok session");
-          startOpenTokSession(pool.openTokSessionConfig, streamingStatus.openTokToken);
+    subscribeToMore({
+      document: POOL_UPDATED_SUBSCRIPTION,
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("POOL_UPDATED_SUBSCRIPTION", prevData, subscriptionData)
+        if (!subscriptionData.data) {
+          return prevData;
         }
-
-        // Load streams
-        updateStreams();
-        console.log("Pool load done");
-      } catch (e) {
-        onError(e);
+        return {
+          pool: subscriptionData.data.poolUpdated
+        };
       }
-    }
+    });
+    subscribeToMore({
+      document: POOL_DELETED_SUBSCRIPTION,
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("POOL_DELETED_SUBSCRIPTION", prevData, subscriptionData)
+        enqueueSnackbar(`Pool ${subscriptionData.data.poolDeleted.name} was deleted`, 'success');
+        history.push("/");
+      }
+    });
+    subscribeToMore({
+      document: STREAMING_STARTED_SUBSCRIPTION,
+      variables: {
+        poolId: poolId
+      },
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("STREAMING_STARTED_SUBSCRIPTION", prevData, subscriptionData)
+        if (!subscriptionData.data) {
+          return prevData;
+        }
+        const stream = subscriptionData.data.streamingStarted;
 
-    onLoad();
+        const result = {
+          pool: {
+            ...prevData.pool,
+            streams: [...prevData.pool.streams, stream]
+          },
+          profile: prevData.profile
+        };
+        return result;
+      }
+    });
+    subscribeToMore({
+      document: STREAMING_STOPPED_SUBSCRIPTION,
+      variables: {
+        poolId: poolId
+      },
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("STREAMING_STOPPED_SUBSCRIPTION", prevData, subscriptionData)
+        if (!subscriptionData.data) {
+          return prevData;
+        }
+        const stream = subscriptionData.data.streamingStopped;
+
+        const result = {
+          pool: {
+            ...prevData.pool,
+            streams: prevData.pool.streams.filter(item => item.streamId !== stream.streamId)
+          },
+          profile: prevData.profile
+        };
+        return result;
+      }
+    });
+    subscribeToMore({
+      document: STREAM_UPDATED_SUBSCRIPTION,
+      variables: {
+        poolId: poolId
+      },
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("STREAM_UPDATED_SUBSCRIPTION", prevData, subscriptionData)
+        if (!subscriptionData.data) {
+          return prevData;
+        }
+        const stream = subscriptionData.data.streamUpdated;
+
+        console.log("prevData", JSON.stringify(prevData))
+
+        const result = {
+          pool: {
+            ...prevData.pool,
+            streams: prevData.pool.streams.map(item=> item.streamId === stream.streamId ? stream : item)
+          },
+          profile: prevData.profile
+        };
+
+        console.log("result", JSON.stringify(result));
+
+        return result;
+      }
+    });
+    subscribeToMore({
+      document: STREAMING_STATUS_UPDATED_SUBSCRIPTION,
+      variables: {
+        userId: getUserInfo().id
+      },
+      updateQuery: (prevData, { subscriptionData }) => {
+        console.log("STREAMING_STATUS_UPDATED", prevData, subscriptionData)
+        if (!subscriptionData.data) {
+          return prevData;
+        }
+        const streamingStatus = subscriptionData.data.streamingStatusUpdated;
+
+        return {
+          pool: prevData.pool,
+          profile: {
+            ...prevData.profile,
+            streamingStatus: streamingStatus
+          }
+        };
+      }
+    });
+
     return function cleanup() {
       // Cleanup OpenTok session
       if (openTokIsSessionConnected()) {
@@ -226,9 +262,7 @@ export default function Pool() {
     if (result) {
       setIsLoading(true);
       try {
-        await deletePool();
-        enqueueSnackbar(`Pool ${pool.name} deleted`, 'success');
-        history.push("/");
+        deletePool();
       } catch (e) {
         onError(e);
         setIsLoading(false);
@@ -238,7 +272,7 @@ export default function Pool() {
 
   function renderStreamsList(streams) {
     return streams
-      .filter((stream) => !stream.own)
+      .filter((stream) => stream.streamId !== getCurrentStreamId())
       .map((stream, i) => {
         return (
           <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
@@ -248,44 +282,46 @@ export default function Pool() {
       });
   }
 
-  return (
-    pool &&
-    <Container component="main" maxWidth="xl">
-      <Grid container spacing={3}>
-        {isMyPool &&
-        <>
-          {showDeleteConfirmation &&
-          <ConfirmationDialog
-            title="Delete pool?"
-            text={`Are you sure you want to delete pool ${pool.name}?`}
-            result={handleDeleteConfirmation}/>}
+  return (<>
+      {loading && <Loading/>}
+      {!loading && error && <Error error={error}/>}
+      {!loading && !error && data.pool &&
+      <Container component="main" maxWidth="xl">
+        <Grid container spacing={3}>
+          {isMyPool &&
+          <>
+            {showDeleteConfirmation &&
+            <ConfirmationDialog
+              title="Delete pool?"
+              text={`Are you sure you want to delete pool ${data.pool.name}?`}
+              result={handleDeleteConfirmation}/>}
+            <Grid item>
+              <Fab color="primary"
+                   aria-label="delete"
+                   size="medium"
+                   onClick={handleDelete}
+                   disabled={deletePoolLoading}>
+                <DeleteIcon/>
+              </Fab>
+            </Grid>
+          </>}
+          {isOpenTokSessionConnected && data.pool && <Grid item>
+            <StreamingStatus
+              pool={data.pool}
+              streamIdUpdated={updateCurrentStreamId}
+              disabled={isLoading}
+            />
+          </Grid>}
           <Grid item>
-            <Fab color="primary"
-                 aria-label="delete"
-                 size="medium"
-                 onClick={handleDelete}
-                 disabled={isLoading}>
-              <DeleteIcon/>
-            </Fab>
+            <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
+              {data.pool.name}
+            </Typography>
           </Grid>
-        </>}
-        {isOpenTokSessionConnected && pool && <Grid item>
-          <StreamingStatus
-            pool={pool}
-            streamId={currentStreamId}
-            streamIdUpdated={updateCurrentStreamId}
-            disabled={isLoading}
-          />
-        </Grid>}
-        <Grid item>
-          <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
-            {pool.name}
-          </Typography>
         </Grid>
-      </Grid>
-      <Grid container spacing={3}>
-        {streams && renderStreamsList(streams)}
-      </Grid>
-    </Container>
-  );
+        <Grid container spacing={3}>
+          {data.pool.streams && renderStreamsList(data.pool.streams)}
+        </Grid>
+      </Container>}
+    </>
+  )
 }

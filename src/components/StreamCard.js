@@ -2,7 +2,7 @@ import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import StreamView from "./StreamView";
 import CardHeader from "@material-ui/core/CardHeader";
-import React, {useRef, useState} from "react";
+import React, {useRef} from "react";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 
 const useStyles = makeStyles((theme) => ({

@@ -68,7 +68,7 @@ export default function Stream() {
         startOpenTokSession(
           pool.openTokSessionConfig.apiKey,
           pool.openTokSessionConfig.sessionId,
-          userProfile.streamingStatus.openTokToken
+          pool.openTokSessionConfig.openTokToken
         );
       } catch (e) {
         onError(e);

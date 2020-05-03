@@ -27,7 +27,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function StreamingStatus({pool, streamIdUpdated, ...props}) {
+export default function StreamingStatus({pool, enabled, streamIdUpdated, ...props}) {
   const classes = useStyles();
   const {enqueueSnackbar} = useSnackbar();
   const {getUserInfo} = useAuthContext();
@@ -210,7 +210,7 @@ export default function StreamingStatus({pool, streamIdUpdated, ...props}) {
            aria-label="start"
            size="medium"
            onClick={handleStartStreaming}
-           disabled={isLoading()}>
+           disabled={!enabled || isLoading()}>
         <VideocamIcon/>
       </Fab>
     )

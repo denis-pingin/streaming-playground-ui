@@ -321,13 +321,14 @@ export default function Pool() {
               </Fab>
             </Grid>
           </>}
-          {isOpenTokSessionConnected && data.pool && <Grid item>
+          <Grid item>
             <StreamingStatus
               pool={data.pool}
+              enabled={isOpenTokSessionConnected}
               streamIdUpdated={updateCurrentStreamId}
               disabled={isLoading()}
             />
-          </Grid>}
+          </Grid>
           <Grid item>
             <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
               {data.pool.name}

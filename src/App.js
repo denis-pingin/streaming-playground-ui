@@ -20,8 +20,6 @@ import {defaultDataIdFromObject, InMemoryCache} from "apollo-cache-inmemory";
 import {Auth} from 'aws-amplify';
 import aws4 from "@aws-amplify/core/lib/Signer";
 
-window.LOG_LEVEL = 'DEBUG';
-
 function App() {
   const history = useHistory();
   const [isAuthenticating, setIsAuthenticating] = useState(true);

@@ -31,11 +31,13 @@ export default function Pools() {
   const classes = useStyles();
   const {isAuthenticated} = useAuthContext();
   const [newPoolDialogOpen, setNewPoolDialogOpen] = useState(false);
-  const {loading, error, data, subscribeToMore} = useQuery(POOLS_QUERY, {
-    skip: !isAuthenticated()
+  const {loading, error, data, subscribeToMore, refetch} = useQuery(POOLS_QUERY, {
+    skip: !isAuthenticated(),
+    fetchPolicy: "network-only"
   });
 
   useEffect(() => {
+    refetch();
     subscribeToMore({
       document: POOL_CREATED_SUBSCRIPTION,
       updateQuery: (prevData, { subscriptionData }) => {

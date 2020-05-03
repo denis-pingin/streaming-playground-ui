@@ -273,13 +273,11 @@ export default function Pool() {
   function renderStreamsList(streams) {
     return streams
       .filter((stream) => stream.streamId !== getCurrentStreamId())
-      .map((stream, i) => {
-        return (
+      .map(stream => (
           <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
             <StreamCard stream={stream} openTokStream={openTokStreams[stream.openTokStreamId]}/>
           </Grid>
-        )
-      });
+      ));
   }
 
   return (<>

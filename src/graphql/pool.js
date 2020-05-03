@@ -58,6 +58,19 @@ export const CREATE_POOL_MUTATION = gql`
   }
 `;
 
+export const UPDATE_POOL_MUTATION = gql`
+  mutation UpdatePool($poolId: String!, $name: String!) {
+    updatePool(poolId: $poolId, name: $name) {
+      poolId
+      name
+      streams {
+        streamId
+        name
+      }
+    }
+  }
+`;
+
 export const DELETE_POOL_MUTATION = gql`
   mutation DeletePool($poolId: String!) {
     deletePool(poolId: $poolId) {

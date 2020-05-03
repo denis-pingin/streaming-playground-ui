@@ -6,6 +6,7 @@ import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Fab from "@material-ui/core/Fab";
 import DeleteIcon from "@material-ui/icons/Delete";
+import EditIcon from "@material-ui/icons/Edit";
 import StreamingStatus from "../components/StreamingStatus";
 import {useAuthContext} from "../contexts/AuthContext";
 import {useOpenTokContext} from "../contexts/OpenTokContext";
@@ -22,6 +23,7 @@ import {
   STREAMING_STOPPED_SUBSCRIPTION
 } from "../graphql/stream";
 import {STREAMING_STATUS_UPDATED_SUBSCRIPTION} from "../graphql/user";
+import EditPoolDialog from "../components/EditPoolDialog";
 
 export default function Pool() {
   const {poolId} = useParams();
@@ -29,7 +31,6 @@ export default function Pool() {
   const {enqueueSnackbar} = useSnackbar();
   const {getUserInfo} = useAuthContext();
   const {openTokStartSession, openTokStopSession, openTokIsSessionConnected} = useOpenTokContext();
-  const [isLoading, setIsLoading] = useState(false);
   const [isMyPool, setIsMyPool] = useState(false);
   const [isOpenTokSessionConnected, setIsOpenTokSessionConnected] = useState(openTokIsSessionConnected());
   const [openTokStreams, setOpenTokStreams] = useState({});
@@ -37,6 +38,7 @@ export default function Pool() {
   const [, setResizeState] = useState(null);
   const [currentStreamId, setCurrentStreamId] = useState(null);
   const currentStreamIdRef = useRef(currentStreamId);
+  const [editPoolDialogOpen, setEditPoolDialogOpen] = useState(false);
 
   // Pool query
   const {loading, error, data, subscribeToMore} = useQuery(POOL_QUERY, {
@@ -59,7 +61,7 @@ export default function Pool() {
   });
 
   // Delete pool mutation
-  const [deletePool, {deletePoolLoading}] = useMutation(DELETE_POOL_MUTATION, {
+  const [deletePool, {loading: deletePoolLoading}] = useMutation(DELETE_POOL_MUTATION, {
     variables: {
       poolId: poolId
     },
@@ -260,12 +262,10 @@ export default function Pool() {
   async function handleDeleteConfirmation(result) {
     setShowDeleteConfirmation(false);
     if (result) {
-      setIsLoading(true);
       try {
         deletePool();
       } catch (e) {
         onError(e);
-        setIsLoading(false);
       }
     }
   }
@@ -278,6 +278,14 @@ export default function Pool() {
             <StreamCard stream={stream} openTokStream={openTokStreams[stream.openTokStreamId]}/>
           </Grid>
       ));
+  }
+
+  function handleEdit() {
+    setEditPoolDialogOpen(true);
+  }
+
+  function isLoading() {
+    return loading || deletePoolLoading;
   }
 
   return (<>
@@ -298,8 +306,18 @@ export default function Pool() {
                    aria-label="delete"
                    size="medium"
                    onClick={handleDelete}
-                   disabled={deletePoolLoading}>
+                   disabled={isLoading()}>
                 <DeleteIcon/>
+              </Fab>
+            </Grid>
+            {editPoolDialogOpen && <EditPoolDialog open={editPoolDialogOpen} pool={data.pool} openStateChanged={setEditPoolDialogOpen}/>}
+            <Grid item>
+              <Fab color="primary"
+                   aria-label="delete"
+                   size="medium"
+                   onClick={handleEdit}
+                   disabled={isLoading()}>
+                <EditIcon/>
               </Fab>
             </Grid>
           </>}
@@ -307,7 +325,7 @@ export default function Pool() {
             <StreamingStatus
               pool={data.pool}
               streamIdUpdated={updateCurrentStreamId}
-              disabled={isLoading}
+              disabled={isLoading()}
             />
           </Grid>}
           <Grid item>

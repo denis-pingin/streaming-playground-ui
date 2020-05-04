@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {useOpenTokContext} from "../contexts/OpenTokContext";
+import {useOpenTokContext} from "../../contexts/OpenTokContext";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 
 const useStyles = makeStyles((theme) => ({
@@ -13,7 +13,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function StreamView(props) {
-  const {stream, width, height, ...other} = props;
+  const {stream, width, height} = props;
   const classes = useStyles(props);
   const {openTokSubscribeToStream} = useOpenTokContext();
   const [, setDimensions] = useState({});
@@ -23,7 +23,7 @@ export default function StreamView(props) {
       width: width,
       height: height
     });
-  }, [width, height]);
+  }, [width, height, stream]);
 
   useEffect(() => {
     openTokSubscribeToStream(stream.id, stream);

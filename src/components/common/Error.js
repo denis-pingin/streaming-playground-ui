@@ -20,7 +20,7 @@ export default function Error({error}) {
         Failed to load data
       </Typography>
       <Typography>
-        {error}
+        {JSON.stringify(error)}
       </Typography>
     </div>
   )

@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {useAuthContext} from "../contexts/AuthContext";
+import {useAuthContext} from "../../contexts/AuthContext";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -10,16 +10,16 @@ import makeStyles from "@material-ui/core/styles/makeStyles";
 import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import Link from "@material-ui/core/Link";
-import NewPoolDialog from "../components/NewPoolDialog";
+import NewPoolDialog from "./NewPoolDialog";
 import {useQuery} from 'react-apollo';
-import Loading from "../components/Loading";
-import Error from "../components/Error";
+import Loading from "../common/Loading";
+import Error from "../common/Error";
 import {
-  POOL_CREATED_SUBSCRIPTION,
-  POOL_DELETED_SUBSCRIPTION,
-  POOL_UPDATED_SUBSCRIPTION,
-  POOLS_QUERY
-} from "../graphql/pool"
+  PoolCreatedSubscription,
+  PoolDeletedSubscription,
+  PoolUpdatedSubscription,
+  GetPoolsQuery
+} from "../../graphql/pool"
 
 const useStyles = makeStyles((theme) => ({
   card: {
@@ -31,7 +31,7 @@ export default function Pools() {
   const classes = useStyles();
   const {isAuthenticated} = useAuthContext();
   const [newPoolDialogOpen, setNewPoolDialogOpen] = useState(false);
-  const {loading, error, data, subscribeToMore, refetch} = useQuery(POOLS_QUERY, {
+  const {loading, error, data, subscribeToMore, refetch} = useQuery(GetPoolsQuery, {
     skip: !isAuthenticated(),
     fetchPolicy: "network-only"
   });
@@ -39,7 +39,7 @@ export default function Pools() {
   useEffect(() => {
     refetch();
     subscribeToMore({
-      document: POOL_CREATED_SUBSCRIPTION,
+      document: PoolCreatedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
         console.log("POOL_CREATED_SUBSCRIPTION", prevData, subscriptionData)
         if (!subscriptionData.data) {
@@ -53,7 +53,7 @@ export default function Pools() {
       }
     });
     subscribeToMore({
-      document: POOL_UPDATED_SUBSCRIPTION,
+      document: PoolUpdatedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
         console.log("POOL_UPDATED_SUBSCRIPTION", prevData, subscriptionData)
         if (!subscriptionData.data) {
@@ -61,12 +61,12 @@ export default function Pools() {
         }
         const pool = subscriptionData.data.poolUpdated;
         return {
-          pools: prevData.pools.map(item=> item.poolId == pool.poolId ? pool : item)
+          pools: prevData.pools.map(item=> item.poolId === pool.poolId ? pool : item)
         };
       }
     });
     subscribeToMore({
-      document: POOL_DELETED_SUBSCRIPTION,
+      document: PoolDeletedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
         console.log("POOL_DELETED_SUBSCRIPTION", prevData, subscriptionData)
         if (!subscriptionData.data) {

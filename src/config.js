@@ -1,5 +1,4 @@
 const offline = {
-  STRIPE_KEY: "",
   s3: {
     REGION: "localhost",
     BUCKET: ""
@@ -20,7 +19,6 @@ const offline = {
 };
 
 const dev = {
-  STRIPE_KEY: "",
   s3: {
     REGION: "eu-central-1",
     BUCKET: "streaming-playground-api-dev-attachmentsbucket-ny4fj5oz3abo"
@@ -41,7 +39,6 @@ const dev = {
 };
 
 const prod = {
-  STRIPE_KEY: "",
   s3: {
     REGION: "eu-central-1",
     BUCKET: ""

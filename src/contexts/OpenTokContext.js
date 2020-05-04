@@ -61,24 +61,27 @@ const useOpenTokContext = () => {
     setOpenTokContext(openTokContext => ({...openTokContext, publisher: publisher}));
   }
 
-  function startSession(apiKey, sessionId, token, callback) {
+  function startSession(config, callback) {
+    if (!config || !config.apiKey || !config.sessionId || !config.openTokToken) {
+      throw new Error("Invalid session config: " + JSON.stringify(config));
+    }
     let session = getSession();
     if (session) {
-      if (session.sessionId !== sessionId) {
-        console.log("SessionId has changed, disconnecting previous session");
+      if (session.sessionId !== config.sessionId) {
         stopSession();
       } else {
         if (session.isConnected()) {
-          console.log("Session is already connected");
-          callback({
-            type: "sessionConnected",
-            session: session
-          });
+          if (typeof(callback) === 'function') {
+            callback({
+              type: "sessionConnected",
+              session: session
+            });
+          }
           return;
         }
       }
     }
-    session = doStartSession(apiKey, sessionId, token, callback)
+    session = doStartSession(config.apiKey, config.sessionId, config.openTokToken, callback)
     setSession(session);
   }
 
@@ -101,12 +104,14 @@ const useOpenTokContext = () => {
     const publisher = doStartPublishing(session);
     publisher.on({
       streamCreated: function (event) {
-        console.log("Publisher started streaming", event);
-        callback(event);
+        if (typeof(callback) === 'function') {
+          callback(event);
+        }
       },
       streamDestroyed: function (event) {
-        console.log("Publisher stopped streaming. Reason: " + event.reason);
-        callback(event);
+        if (typeof(callback) === 'function') {
+          callback(event);
+        }
       }
     });
     setPublisher(publisher);
@@ -142,28 +147,30 @@ const useOpenTokContext = () => {
 
 export function doStartSession(apiKey, sessionId, token, callback) {
   const session = OT.initSession(apiKey, sessionId);
-  console.log("Initialized OpenTok session:", session);
 
   session.on('streamCreated', function (event) {
-    console.log("Stream created:", event)
-    callback(event);
+    if (typeof(callback) === 'function') {
+      callback(event);
+    }
   });
 
   session.connect(token, function (error) {
     if (error) {
-      console.log(error.message);
-      callback({
-        type: "sessionConnectionError",
-        session: session,
-        error: error
-      });
+      console.log("Session connection error", error);
+      if (typeof(callback) === 'function') {
+        callback({
+          type: "sessionConnectionError",
+          session: session,
+          error: error
+        });
+      }
     } else {
-      console.log("Session connected");
-      callback({
-        type: "sessionConnected",
-        session: session
-      });
-      // You have connected to the session. You could publish a stream now.
+      if (typeof(callback) === 'function') {
+        callback({
+          type: "sessionConnected",
+          session: session
+        });
+      }
     }
   });
 
@@ -171,7 +178,6 @@ export function doStartSession(apiKey, sessionId, token, callback) {
 }
 
 export function doDisconnectFromSession(session) {
-  console.log("Disconnecting OpenTok session");
   session.disconnect();
 }
 
@@ -181,26 +187,21 @@ export function doSubscribeToStream(elementId, session, stream) {
     width: '100%',
     height: '100%'
   }, handleError);
-  console.log("Subscribed to stream:", stream);
 }
 
 export function doStartPublishing(session) {
-  console.log("Starting publishing");
   const publisher = OT.initPublisher('publisher', {
     insertMode: 'append',
     width: '100%',
     height: '100%'
   }, handleError);
   session.publish(publisher, handleError);
-  console.log("Started publishing");
   return publisher;
 }
 
 export function doStopPublishing(session, publisher) {
-  console.log("Stopping publishing");
   session.unpublish(publisher);
   publisher.destroy();
-  console.log("Stopped publishing");
 }
 
 export {OpenTokContext, OpenTokContextProvider, useOpenTokContext};

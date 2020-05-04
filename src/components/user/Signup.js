@@ -1,9 +1,9 @@
 import React, {useState} from "react";
 import {Auth} from "aws-amplify";
 import {Link as RouterLink, useHistory} from "react-router-dom";
-import {useFormFields} from "../libs/hooksLib";
-import {onError} from "../libs/errorLib";
-import {useAuthContext} from "../contexts/AuthContext";
+import {useFormFields} from "../../libs/hooksLib";
+import {onError} from "../../libs/errorLib";
+import {useAuthContext} from "../../contexts/AuthContext";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Container from "@material-ui/core/Container";
 import Grid from "@material-ui/core/Grid";

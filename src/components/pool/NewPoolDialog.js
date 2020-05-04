@@ -4,13 +4,13 @@ import TextField from "@material-ui/core/TextField";
 import DialogActions from "@material-ui/core/DialogActions";
 import Button from "@material-ui/core/Button";
 import React, {useEffect, useState} from "react";
-import {onError} from "../libs/errorLib";
+import {onError} from "../../libs/errorLib";
 import Dialog from "@material-ui/core/Dialog";
-import {useFormFields} from "../libs/hooksLib";
+import {useFormFields} from "../../libs/hooksLib";
 import {useHistory} from "react-router-dom";
 import {useSnackbar} from "notistack";
 import {useMutation} from 'react-apollo';
-import {CREATE_POOL_MUTATION} from "../graphql/pool";
+import {CreatePoolMutation} from "../../graphql/pool";
 
 export default function NewPoolDialog({open, openStateChanged}) {
   const history = useHistory();
@@ -19,7 +19,7 @@ export default function NewPoolDialog({open, openStateChanged}) {
     name: ""
   });
   const {enqueueSnackbar} = useSnackbar();
-  const [createPool, { loading }] = useMutation(CREATE_POOL_MUTATION, {
+  const [createPool, { loading }] = useMutation(CreatePoolMutation, {
     onCompleted: (data) => {
       console.log("Pool created:", data);
       enqueueSnackbar(`Pool ${data.createPool.name} created`, 'success');

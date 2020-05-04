@@ -44,13 +44,9 @@ const useAuthContext = () => {
   }
 
   async function login() {
-    const cognitoUserSession = await Auth.currentSession();
-    console.log("cognitoUserSession:", cognitoUserSession);
-
+    await Auth.currentSession();
     const userInfo = await Auth.currentUserInfo();
-    console.log("Logged in userInfo:", userInfo);
     const authUser = await Auth.currentAuthenticatedUser();
-    console.log("Auth User:", authUser);
 
     const authContext = {
       isAuthenticated: true,

@@ -1,8 +1,8 @@
 import React, {useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
 import {AppBar, Divider, IconButton, Menu, MenuItem, Toolbar, Typography} from "@material-ui/core";
-import UserAvatar from "../components/UserAvatar";
-import {useAuthContext} from "../contexts/AuthContext";
+import UserAvatar from "../user/UserAvatar";
+import {useAuthContext} from "../../contexts/AuthContext";
 import Link from "@material-ui/core/Link";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import MenuIcon from "@material-ui/icons/Menu";
@@ -22,7 +22,7 @@ export default function Bar({logout, ...props}) {
   const classes = useStyles();
   const {isAuthenticated} = useAuthContext();
   const [anchorElement, setAnchorElement] = useState(null);
-  const [menuItems, setMenuItems] = useState([
+  const [menuItems] = useState([
     {
       name: "Profile",
       to: "/profile"

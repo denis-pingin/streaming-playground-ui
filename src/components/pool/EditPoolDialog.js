@@ -4,18 +4,18 @@ import TextField from "@material-ui/core/TextField";
 import DialogActions from "@material-ui/core/DialogActions";
 import Button from "@material-ui/core/Button";
 import React, {useEffect, useState} from "react";
-import {onError} from "../libs/errorLib";
+import {onError} from "../../libs/errorLib";
 import Dialog from "@material-ui/core/Dialog";
-import {useFormFields} from "../libs/hooksLib";
+import {useFormFields} from "../../libs/hooksLib";
 import {useMutation} from 'react-apollo';
-import {UPDATE_POOL_MUTATION} from "../graphql/pool";
+import {UpdatePoolMutation} from "../../graphql/pool";
 
 export default function EditPoolDialog({open, openStateChanged, pool}) {
   const [isOpen, setIsOpen] = useState(open);
   const [fields, handleFieldChange] = useFormFields({
     name: pool.name
   });
-  const [updatePoolName, { loading }] = useMutation(UPDATE_POOL_MUTATION);
+  const [updatePoolName, { loading }] = useMutation(UpdatePoolMutation);
 
   useEffect(() => {
     function init() {

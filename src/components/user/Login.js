@@ -1,8 +1,8 @@
 import React, {useState} from "react";
 import {Auth} from "aws-amplify";
-import {useFormFields} from "../libs/hooksLib";
-import {onError} from "../libs/errorLib";
-import {useAuthContext} from "../contexts/AuthContext";
+import {useFormFields} from "../../libs/hooksLib";
+import {onError} from "../../libs/errorLib";
+import {useAuthContext} from "../../contexts/AuthContext";
 import Container from "@material-ui/core/Container";
 import Avatar from "@material-ui/core/Avatar";
 import Typography from "@material-ui/core/Typography";

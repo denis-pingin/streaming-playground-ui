@@ -1,10 +1,10 @@
 import React from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {useAuthContext} from "../contexts/AuthContext";
+import {useAuthContext} from "../../contexts/AuthContext";
 import Typography from "@material-ui/core/Typography";
 import Container from "@material-ui/core/Container";
 import {Button, ButtonGroup} from "@material-ui/core";
-import Pools from "./Pools";
+import Pools from "../pool/Pools";
 
 export default function Home() {
   const {isAuthenticated} = useAuthContext();

@@ -1,16 +1,15 @@
 import React from "react";
 import {Route, Switch} from "react-router-dom";
 
-import AuthenticatedRoute from "./components/AuthenticatedRoute";
-import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
+import AuthenticatedRoute from "./components/route/AuthenticatedRoute";
+import UnauthenticatedRoute from "./components/route/UnauthenticatedRoute";
 
-import Home from "./containers/Home";
-import Login from "./containers/Login";
-import Pool from "./containers/Pool";
-import Stream from "./containers/Stream";
-import Signup from "./containers/Signup";
-import Settings from "./containers/Settings";
-import NotFound from "./containers/NotFound";
+import Home from "./components/common/Home";
+import Login from "./components/user/Login";
+import Pool from "./components/pool/Pool";
+import Signup from "./components/user/Signup";
+import Settings from "./components/user/Settings";
+import NotFound from "./components/common/NotFound";
 
 export default function Routes() {
   return (
@@ -30,9 +29,9 @@ export default function Routes() {
       <AuthenticatedRoute exact path="/pools/:poolId">
         <Pool />
       </AuthenticatedRoute>
-      <AuthenticatedRoute exact path="/pools/:poolId/streams/:streamId">
-        <Stream />
-      </AuthenticatedRoute>
+      {/*<AuthenticatedRoute exact path="/pools/:poolId/streams/:streamId">*/}
+      {/*  <Stream />*/}
+      {/*</AuthenticatedRoute>*/}
       <Route>
         <NotFound />
       </Route>

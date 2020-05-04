@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from "react";
-import {onError} from "../libs/errorLib";
-import {useAuthContext} from "../contexts/AuthContext";
-import {useOpenTokContext} from "../contexts/OpenTokContext";
+import {onError} from "../../libs/errorLib";
+import {useAuthContext} from "../../contexts/AuthContext";
+import {useOpenTokContext} from "../../contexts/OpenTokContext";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Fab from "@material-ui/core/Fab";
 import VideocamIcon from "@material-ui/icons/Videocam";
@@ -9,10 +9,10 @@ import VideocamOffIcon from "@material-ui/icons/VideocamOff";
 import {useSnackbar} from "notistack";
 import {useMutation} from 'react-apollo';
 import {
-  START_STREAMING_MUTATION,
-  STOP_STREAMING_MUTATION,
-  UPDATE_STREAM_OPEN_TOK_STREAM_ID_MUTATION
-} from "../graphql/stream";
+  StartStreamingMutation,
+  StopStreamingMutation,
+  UpdateStreamOpenTokStreamIdMutation
+} from "../../graphql/stream";
 
 const useStyles = makeStyles((theme) => ({
   videoPreview: {
@@ -27,11 +27,11 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function StreamingStatus({pool, enabled, streamIdUpdated, ...props}) {
+export default function StreamingStatus({pool, disabled, streamIdUpdated, ...props}) {
   const classes = useStyles();
   const {enqueueSnackbar} = useSnackbar();
   const {getUserInfo} = useAuthContext();
-  const {openTokStartPublishing, openTokStopPublishing, openTokIsSessionConnected, openTokIsPublishing} = useOpenTokContext();
+  const {openTokStartPublishing, openTokStopPublishing, openTokIsPublishing} = useOpenTokContext();
   const [videoDimensions, setVideoDimensions] = useState(null);
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
@@ -39,50 +39,89 @@ export default function StreamingStatus({pool, enabled, streamIdUpdated, ...prop
   });
   const [currentStreamId, setCurrentStreamId] = useState(null);
   const currentStreamIdRef = useRef(currentStreamId);
-  const [startStreaming, { startStreamingLoading }] = useMutation(START_STREAMING_MUTATION, {
-    onCompleted: (data) => {
+  const [startStreaming, { startStreamingLoading }] = useMutation(StartStreamingMutation, {
+    onCompleted(data) {
       updateCurrentStreamId(data.startStreaming.streamId);
-      setupStreaming(data.startStreaming.streamId);
+      setupStreaming();
+    },
+    onError(error) {
+      console.log("Failed to start streaming", error);
+      enqueueSnackbar("Failed to start straming: " + error.message);
     }
   });
-  const [stopStreaming, { stopStreamingLoading }] = useMutation(STOP_STREAMING_MUTATION, {
+  const [stopStreaming, { stopStreamingLoading }] = useMutation(StopStreamingMutation, {
     onCompleted: (data) => {
       updateCurrentStreamId(null);
-      setupStreaming(null);
+      setupStreaming();
+    },
+    onError(error) {
+      console.log("Failed to stop streaming", error);
+      enqueueSnackbar("Failed to stop straming: " + error.message);
     }
   });
-  const [updateStreamOpenTokStreamId, { updateStreamOpenTokStreamIdLoading }] = useMutation(UPDATE_STREAM_OPEN_TOK_STREAM_ID_MUTATION);
+  const [updateStreamOpenTokStreamId, { updateStreamOpenTokStreamIdLoading }] = useMutation(UpdateStreamOpenTokStreamIdMutation);
 
   function getCurrentStreamId() {
     return currentStreamIdRef.current;
   }
 
   function updateCurrentStreamId(currentStreamId) {
-    console.log("StreamingStatus: updated currentStreamId:", currentStreamId);
     currentStreamIdRef.current = currentStreamId;
     setCurrentStreamId(currentStreamId);
     streamIdUpdated(currentStreamId)
   }
 
-  function setupStreaming(currentStreamId) {
+  function setupStreaming() {
     try {
-      console.log("Setup streaming:", currentStreamId, openTokIsPublishing())
+      const currentStreamId = getCurrentStreamId();
       if (currentStreamId && !openTokIsPublishing()) {
         console.log("Streaming is on, starting publishing");
-        startOpenTokPublishing();
+        openTokStartPublishing(openTokCallback);
       } else if (!currentStreamId && openTokIsPublishing()) {
         console.log("Streaming is off, stopping publishing");
-        stopOpenTokPublishing();
+        openTokStopPublishing();
       }
     } catch (e) {
       onError(e);
     }
   }
 
+  function openTokCallback(event) {
+    switch (event.type) {
+      case "streamCreated":
+        console.log("OpenTok publishing stream created:", event);
+        setVideoDimensions(event.stream.videoDimensions);
+        enqueueSnackbar("You are now LIVE!");
+        handlePublishingStarted(event.stream.id);
+        break;
+      case "streamDestroyed":
+        console.log("OpenTok publishing stream destroyed:", event);
+        enqueueSnackbar("Streaming stopped");
+        break;
+      default:
+        console.log("OpenTok publishing event:", event);
+    }
+  }
+
+  function handlePublishingStarted(openTokStreamId) {
+    const currentStreamId = getCurrentStreamId();
+    if (!currentStreamId) {
+      console.log("User is not streaming");
+      return;
+    }
+    return updateStreamOpenTokStreamId({
+      variables: {
+        poolId: pool.poolId,
+        streamId: currentStreamId,
+        openTokStreamId: openTokStreamId
+      }
+    });
+  }
+
   useEffect(() => {
     return function cleanup() {
       if (openTokIsPublishing()) {
-        stopOpenTokPublishing();
+        openTokStopPublishing();
       }
     };
   }, []);
@@ -101,75 +140,32 @@ export default function StreamingStatus({pool, enabled, streamIdUpdated, ...prop
     }
   });
 
-  async function handlePublishingStarted(openTokStreamId) {
-    const currentStreamId = getCurrentStreamId();
-    if (!currentStreamId) {
-      console.log("User is not streaming");
-      return;
-    }
-    updateStreamOpenTokStreamId({
-      variables: {
-        poolId: pool.poolId,
-        streamId: currentStreamId,
-        openTokStreamId: openTokStreamId
-      }
-    });
-  }
-
-  function startOpenTokPublishing() {
-    openTokStartPublishing(function (event) {
-      switch (event.type) {
-        case "streamCreated":
-          console.log("OpenTok publishing stream created:", event);
-          setVideoDimensions(event.stream.videoDimensions);
-          enqueueSnackbar("You are now LIVE!");
-          handlePublishingStarted(event.stream.id);
-          break;
-        default:
-          console.log("OpenTok publishing event:", event);
-      }
-    });
-  }
-
-  function stopOpenTokPublishing() {
-    openTokStopPublishing()
-    enqueueSnackbar("Streaming stopped");
-  }
-
-  async function handleStartStreaming() {
+  function handleStartStreaming() {
     const currentStreamId = getCurrentStreamId();
     if (currentStreamId) {
       throw new Error("Already streaming");
     }
 
-    try {
-      startStreaming({
-        variables: {
-          poolId: pool.poolId,
-          name: getUserInfo().attributes.name
-        }
-      });
-    } catch (e) {
-      onError(e);
-    }
+    return startStreaming({
+      variables: {
+        poolId: pool.poolId,
+        name: getUserInfo().attributes.name
+      }
+    });
   }
 
-  async function handleStopStreaming() {
+  function handleStopStreaming() {
     const currentStreamId = getCurrentStreamId();
     if (!currentStreamId) {
       throw new Error("Not streaming");
     }
 
-    try {
-      stopStreaming({
-        variables: {
-          poolId: pool.poolId,
-          streamId: currentStreamId
-        }
-      });
-    } catch (e) {
-      onError(e);
-    }
+    return stopStreaming({
+      variables: {
+        poolId: pool.poolId,
+        streamId: currentStreamId
+      }
+    });
   }
 
   function getPreviewStyle(windowDimensions, videoDimensions) {
@@ -210,7 +206,7 @@ export default function StreamingStatus({pool, enabled, streamIdUpdated, ...prop
            aria-label="start"
            size="medium"
            onClick={handleStartStreaming}
-           disabled={!enabled || isLoading()}>
+           disabled={disabled || isLoading()}>
         <VideocamIcon/>
       </Fab>
     )

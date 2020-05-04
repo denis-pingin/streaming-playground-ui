@@ -43,7 +43,6 @@ export default function StreamingCard({stream, openTokStream, ...props}) {
     <Card className={classes.card}>
       {/*<Link component={RouterLink} to={`/pools/${stream.poolId}/streams/${stream.streamId}`} underline="none">*/}
       <CardContent ref={gridItemRef}>
-        {/*{console.log("Rendering:", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetWidth : "no parent", gridItemRefs.current[i] ? gridItemRefs.current[i].offsetHeight : "no parent")}*/}
         {gridItemRef.current && openTokStream &&
         <StreamView id={openTokStream.id}
                     width={getStreamViewWidth()}

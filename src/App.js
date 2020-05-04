@@ -1,14 +1,13 @@
 import React, {useEffect, useState} from "react";
 import {useHistory} from "react-router-dom";
 import {onError} from "./libs/errorLib";
-import "./App.css";
 import {useAuthContext} from "./contexts/AuthContext";
 import Box from "@material-ui/core/Box";
-import ErrorBoundary from "./components/ErrorBoundary";
-import Bar from "./containers/Bar";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+import Bar from "./components/common/Bar";
 import Routes from "./Routes";
 import {SnackbarProvider} from 'notistack';
-import Loading from "./components/Loading";
+import Loading from "./components/common/Loading";
 import {ApolloProvider} from "react-apollo";
 import {SubscriptionClient} from "subscriptions-transport-ws";
 import config from "./config";

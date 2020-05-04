@@ -1,6 +1,6 @@
 import gql from "graphql-tag";
 
-export const STREAMING_STATUS_UPDATED_SUBSCRIPTION = gql`
+export const StreamingStatusUpdatedSubscription = gql`
   subscription StreamingStatusUpdatedSubscription($userId: String!) {
     streamingStatusUpdated(userId: $userId) {
       streaming

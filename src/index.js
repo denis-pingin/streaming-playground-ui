@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {Amplify, Auth} from 'aws-amplify';
 import {BrowserRouter as Router} from 'react-router-dom';
-import './index.css';
 import App from './App';
 import config from './config';
 import {initSentry} from './libs/errorLib';
@@ -53,25 +52,25 @@ Amplify.configure({
     identityPoolId: config.cognito.IDENTITY_POOL_ID,
     userPoolWebClientId: config.cognito.APP_CLIENT_ID
   },
-  Storage: {
-    region: config.s3.REGION,
-    bucket: config.s3.BUCKET,
-    identityPoolId: config.cognito.IDENTITY_POOL_ID
-  },
-  API: {
-    endpoints: [
-      {
-        name: "pools",
-        endpoint: config.apiGateway.URL + "/pools",
-        region: config.apiGateway.REGION
-      },
-      {
-        name: "user",
-        endpoint: config.apiGateway.URL + "/user",
-        region: config.apiGateway.REGION
-      },
-    ]
-  }
+  // Storage: {
+  //   region: config.s3.REGION,
+  //   bucket: config.s3.BUCKET,
+  //   identityPoolId: config.cognito.IDENTITY_POOL_ID
+  // },
+  // API: {
+  //   endpoints: [
+  //     {
+  //       name: "pools",
+  //       endpoint: config.apiGateway.URL + "/pools",
+  //       region: config.apiGateway.REGION
+  //     },
+  //     {
+  //       name: "user",
+  //       endpoint: config.apiGateway.URL + "/user",
+  //       region: config.apiGateway.REGION
+  //     },
+  //   ]
+  // }
 });
 
 ReactDOM.render(

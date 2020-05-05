@@ -1,6 +1,6 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {AppBar, Divider, IconButton, Menu, MenuItem, Toolbar, Typography} from "@material-ui/core";
+import {AppBar, IconButton, Menu, MenuItem, Toolbar, Typography} from "@material-ui/core";
 import UserAvatar from "../user/UserAvatar";
 import {useAuthContext} from "../../contexts/AuthContext";
 import Link from "@material-ui/core/Link";
@@ -18,23 +18,31 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default function Bar({logout, ...props}) {
+export default function Bar({login, logout}) {
   const classes = useStyles();
-  const {isAuthenticated} = useAuthContext();
+  const {isAuthenticated, onAuthenticationUpdated, offAuthenticationUpdated} = useAuthContext();
+  const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   const [anchorElement, setAnchorElement] = useState(null);
   const [menuItems] = useState([
     {
       name: "Profile",
-      to: "/profile"
+      to: "/profile",
+      authenticated: true
     },
     {
       name: "Settings",
-      to: "/settings"
+      to: "/settings",
+      authenticated: true
     },
     {
       name: "Logout",
-      divide: true,
-      onClick: logout
+      onClick: logout,
+      authenticated: true
+    },
+    {
+      name: "Login",
+      onClick: login,
+      authenticated: false
     }
   ]);
 
@@ -45,6 +53,17 @@ export default function Bar({logout, ...props}) {
   function handleCloseMenu(event) {
     setAnchorElement(null);
   }
+
+  function handleAuthenticationUpdated(isAuthenticated) {
+    setLoggedIn(isAuthenticated);
+  }
+
+  useEffect(() => {
+    onAuthenticationUpdated(handleAuthenticationUpdated);
+    return function cleanup() {
+      offAuthenticationUpdated(handleAuthenticationUpdated);
+    }
+  }, []);
 
   return (
     <AppBar color="primary" position="sticky">
@@ -58,62 +77,46 @@ export default function Bar({logout, ...props}) {
           </Link>
         </Typography>
 
-        {isAuthenticated() && (
-          <>
-            <IconButton color="inherit" onClick={handleOpenMenu}>
-              <UserAvatar/>
-            </IconButton>
+        <IconButton color="inherit" onClick={handleOpenMenu}>
+          <UserAvatar/>
+        </IconButton>
 
-            <Menu
-              anchorEl={anchorElement}
-              open={Boolean(anchorElement)}
-              onClose={handleCloseMenu}
-            >
-              {menuItems.map((menuItem, index) => {
-                if (menuItem.hasOwnProperty("condition") && !menuItem.condition) {
-                  return null;
-                }
-
-                let component = null;
-
-                if (menuItem.to) {
-                  component = (
-                    <MenuItem
-                      key={index}
-                      component={Link}
-                      to={menuItem.to}
-                      onClick={handleCloseMenu}
-                    >
-                      {menuItem.name}
-                    </MenuItem>
-                  );
-                } else {
-                  component = (
-                    <MenuItem
-                      key={index}
-                      onClick={() => {
-                        handleCloseMenu();
-                        menuItem.onClick();
-                      }}
-                    >
-                      {menuItem.name}
-                    </MenuItem>
-                  );
-                }
-
-                if (menuItem.divide) {
-                  return (
-                    <span key={index}>
-                      <Divider/>
-                      {component}
-                    </span>
-                  );
-                }
-                return component;
-              })}
-            </Menu>
-          </>
-        )}
+        <Menu
+          anchorEl={anchorElement}
+          open={Boolean(anchorElement)}
+          onClose={handleCloseMenu}
+        >
+          {menuItems
+            .filter(menuItem => loggedIn === menuItem.authenticated)
+            .map((menuItem, index) => {
+              let component;
+              if (menuItem.to) {
+                component = (
+                  <MenuItem
+                    key={index}
+                    component={Link}
+                    to={menuItem.to}
+                    onClick={handleCloseMenu}
+                  >
+                    {menuItem.name}
+                  </MenuItem>
+                );
+              } else {
+                component = (
+                  <MenuItem
+                    key={index}
+                    onClick={() => {
+                      handleCloseMenu();
+                      menuItem.onClick();
+                    }}
+                  >
+                    {menuItem.name}
+                  </MenuItem>
+                );
+              }
+              return component;
+            })}
+        </Menu>
       </Toolbar>
     </AppBar>
   );

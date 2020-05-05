@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import {Auth} from "aws-amplify";
-import {Link as RouterLink, useHistory} from "react-router-dom";
+import {Link as RouterLink, useHistory, useLocation} from "react-router-dom";
 import {useFormFields} from "../../libs/hooksLib";
 import {onError} from "../../libs/errorLib";
 import {useAuthContext} from "../../contexts/AuthContext";
@@ -36,6 +36,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function Signup() {
   const classes = useStyles();
+  const {search} = useLocation();
   const [fields, handleFieldChange] = useFormFields({
     name: "",
     email: "",
@@ -91,9 +92,7 @@ export default function Signup() {
       await Auth.confirmSignUp(fields.email.toLowerCase(), fields.confirmationCode);
       await Auth.signIn(fields.email.toLowerCase(), fields.password);
 
-      login()
-
-      history.push("/");
+      login();
     } catch (e) {
       onError(e);
       setIsLoading(false);
@@ -138,7 +137,7 @@ export default function Signup() {
             </Button>
             <Grid container justify="flex-end">
               <Grid item>
-                <Link to="/login">Already have an account? Sign in</Link>
+                <Link to={`/login${search}`}>Already have an account? Sign in</Link>
               </Grid>
             </Grid>
           </form>
@@ -223,7 +222,7 @@ export default function Signup() {
             <Grid container justify="flex-end">
               <Grid item>
 
-                <Link component={RouterLink} to="/login" color="textSecondary">
+                <Link component={RouterLink} to={`/login${search}`} color="textSecondary">
                   Already have an account? Sign in
                 </Link>
               </Grid>

@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from "react";
-import {useHistory, useParams} from "react-router-dom";
+import {Route, Switch, useHistory, useParams, useRouteMatch} from "react-router-dom";
 import Container from "@material-ui/core/Container";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
@@ -9,27 +9,29 @@ import EditIcon from "@material-ui/icons/Edit";
 import StreamingStatus from "./StreamingStatus";
 import {useAuthContext} from "../../contexts/AuthContext";
 import {useOpenTokContext} from "../../contexts/OpenTokContext";
-import ConfirmationDialog from "../dialog/ConfirmationDialog";
+import ConfirmationDialog from "../common/ConfirmationDialog";
 import StreamCard from "../stream/StreamCard";
 import {useSnackbar} from 'notistack';
 import {useMutation, useQuery} from 'react-apollo';
 import Loading from "../common/Loading";
 import Error from "../common/Error";
-import {DeletePoolMutation, PoolDeletedSubscription, GetPoolQuery, PoolUpdatedSubscription} from "../../graphql/pool";
+import {DeletePoolMutation, GetPoolQuery, PoolDeletedSubscription, PoolUpdatedSubscription} from "../../graphql/pool";
 import {
-  StreamUpdatedSubscription,
   StreamingStartedSubscription,
-  StreamingStoppedSubscription
+  StreamingStoppedSubscription,
+  StreamUpdatedSubscription
 } from "../../graphql/stream";
 import EditPoolDialog from "./EditPoolDialog";
+import AuthenticatedRoute from "../route/AuthenticatedRoute";
 
 export default function Pool() {
+  const match = useRouteMatch();
   const history = useHistory();
   const {poolId} = useParams();
   const {enqueueSnackbar} = useSnackbar();
-  const {getUserInfo} = useAuthContext();
+  const {getUserInfo, isAuthenticated, onAuthenticationUpdated, offAuthenticationUpdated} = useAuthContext();
+  const [userId, setUserId] = useState(isAuthenticated() && getUserInfo().id);
   const {openTokStartSession, openTokStopSession, openTokIsSessionConnected} = useOpenTokContext();
-  const [isMyPool, setIsMyPool] = useState(false);
   const [isOpenTokSessionConnected, setIsOpenTokSessionConnected] = useState(openTokIsSessionConnected());
   const [openTokStreams, setOpenTokStreams] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -38,7 +40,8 @@ export default function Pool() {
   const myStreamId = useRef();
 
   // Get pool query
-  const {loading, error, data, subscribeToMore} = useQuery(GetPoolQuery, {
+  const {loading, error, data, refetch, subscribeToMore} = useQuery(GetPoolQuery, {
+    fetchPolicy: "network-only",
     variables: {
       poolId: poolId
     },
@@ -71,6 +74,17 @@ export default function Pool() {
     }
   });
 
+  function handleAuthenticationUpdated(isAuthenticated, userInfo) {
+    setUserId(isAuthenticated && userInfo.id);
+  }
+
+  useEffect(() => {
+    onAuthenticationUpdated(handleAuthenticationUpdated);
+    return function cleanup() {
+      offAuthenticationUpdated(handleAuthenticationUpdated);
+    }
+  }, []);
+
   function getMyStreamId() {
     return myStreamId.current;
   }
@@ -99,7 +113,7 @@ export default function Pool() {
     }
   }
 
-  // Resize listener and pool ownership update
+  // Resize listener
   useEffect(() => {
     function handleResize() {
       setResizeState({
@@ -108,13 +122,6 @@ export default function Pool() {
       });
     }
 
-    function checkPoolOwnership(pool, userInfo) {
-      setIsMyPool(userInfo && pool && pool.ownerUserId === userInfo.id);
-    }
-
-    if (!loading && !error) {
-      checkPoolOwnership(data.pool, getUserInfo());
-    }
     window.addEventListener('resize', handleResize)
     return function cleanup() {
       window.removeEventListener('resize', handleResize);
@@ -123,9 +130,10 @@ export default function Pool() {
 
   // Init / cleanup once
   useEffect(() => {
+    refetch();
     subscribeToMore({
       document: PoolUpdatedSubscription,
-      updateQuery: (prevData, { subscriptionData }) => {
+      updateQuery: (prevData, {subscriptionData}) => {
         console.log("PoolUpdatedSubscription", subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
@@ -137,7 +145,7 @@ export default function Pool() {
     });
     subscribeToMore({
       document: PoolDeletedSubscription,
-      updateQuery: (prevData, { subscriptionData }) => {
+      updateQuery: (prevData, {subscriptionData}) => {
         console.log("PoolDeletedSubscription", subscriptionData)
         enqueueSnackbar(`Pool ${subscriptionData.data.poolDeleted.name} was deleted`, 'success');
         history.push("/");
@@ -148,7 +156,7 @@ export default function Pool() {
       variables: {
         poolId: poolId
       },
-      updateQuery: (prevData, { subscriptionData }) => {
+      updateQuery: (prevData, {subscriptionData}) => {
         console.log("StreamingStartedSubscription", subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
@@ -160,7 +168,7 @@ export default function Pool() {
         if (index === -1) {
           streams = [...prevData.pool.streams, stream];
         } else {
-          streams = prevData.pool.streams.map(item=> item.streamId === stream.streamId ? stream : item)
+          streams = prevData.pool.streams.map(item => item.streamId === stream.streamId ? stream : item)
         }
 
         return {
@@ -176,7 +184,7 @@ export default function Pool() {
       variables: {
         poolId: poolId
       },
-      updateQuery: (prevData, { subscriptionData }) => {
+      updateQuery: (prevData, {subscriptionData}) => {
         console.log("StreamingStoppedSubscription", subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
@@ -196,7 +204,7 @@ export default function Pool() {
       variables: {
         poolId: poolId
       },
-      updateQuery: (prevData, { subscriptionData }) => {
+      updateQuery: (prevData, {subscriptionData}) => {
         console.log("StreamUpdatedSubscription", subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
@@ -206,7 +214,7 @@ export default function Pool() {
         return {
           pool: {
             ...prevData.pool,
-            streams: prevData.pool.streams.map(item=> item.streamId === stream.streamId ? stream : item)
+            streams: prevData.pool.streams.map(item => item.streamId === stream.streamId ? stream : item)
           }
         };
       }
@@ -239,68 +247,91 @@ export default function Pool() {
     return loading || deletePoolLoading;
   }
 
-  function renderStreams(streams) {
+  function renderPoolStreams() {
     return (
-      <Grid container spacing={3}>
-        {streams
-          .filter((stream) => stream.streamId !== getMyStreamId())
-          .map(stream => (
-            <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
-              <StreamCard stream={stream} openTokStream={openTokStreams[stream.openTokStreamId]}/>
-            </Grid>
-          ))}
-      </Grid>
+      <>
+        {!loading && !error && (
+          <Grid container spacing={3}>
+            {data.pool.streams
+              .filter((stream) => stream.streamId !== getMyStreamId())
+              .map(stream => (
+                <Grid item key={stream.streamId} xs={12} sm={6} md={4} lg={3} xl={2}>
+                  <StreamCard stream={stream} openTokStream={openTokStreams[stream.openTokStreamId]}/>
+                </Grid>
+              ))}
+          </Grid>
+        )}
+      </>
     );
   }
 
-  return (<>
-      {loading && <Loading/>}
-      {!loading && error && <Error error={error}/>}
-      {!loading && !error &&
+  function renderPoolHeader(startStreaming) {
+    return (
+      <>
+        {loading && <Loading/>}
+        {!loading && error && <Error error={error}/>}
+        {!loading && !error && (
+          <Grid container spacing={3}>
+            {userId && data.pool.ownerUserId === userId &&
+            <>
+              {showDeleteConfirmation &&
+              <ConfirmationDialog
+                title="Delete pool?"
+                text={`Are you sure you want to delete pool ${data.pool.name}?`}
+                result={handleDeleteConfirmation}/>}
+              <Grid item>
+                <Fab color="primary"
+                     aria-label="delete"
+                     size="medium"
+                     onClick={handleDelete}
+                     disabled={isLoading()}>
+                  <DeleteIcon/>
+                </Fab>
+              </Grid>
+              {editPoolDialogOpen &&
+              <EditPoolDialog open={editPoolDialogOpen} pool={data.pool} openStateChanged={setEditPoolDialogOpen}/>}
+              <Grid item>
+                <Fab color="primary"
+                     aria-label="delete"
+                     size="medium"
+                     onClick={handleEditPool}
+                     disabled={isLoading()}>
+                  <EditIcon/>
+                </Fab>
+              </Grid>
+            </>}
+            <Grid item>
+              <StreamingStatus
+                pool={data.pool}
+                start={startStreaming}
+                streamIdUpdated={setMyStreamId}
+                disabled={!isOpenTokSessionConnected || isLoading()}
+              />
+            </Grid>
+            <Grid item>
+              <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
+                {data.pool.name}
+              </Typography>
+            </Grid>
+          </Grid>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <>
       <Container component="main" maxWidth="xl">
-        <Grid container spacing={3}>
-          {isMyPool &&
-          <>
-            {showDeleteConfirmation &&
-            <ConfirmationDialog
-              title="Delete pool?"
-              text={`Are you sure you want to delete pool ${data.pool.name}?`}
-              result={handleDeleteConfirmation}/>}
-            <Grid item>
-              <Fab color="primary"
-                   aria-label="delete"
-                   size="medium"
-                   onClick={handleDelete}
-                   disabled={isLoading()}>
-                <DeleteIcon/>
-              </Fab>
-            </Grid>
-            {editPoolDialogOpen && <EditPoolDialog open={editPoolDialogOpen} pool={data.pool} openStateChanged={setEditPoolDialogOpen}/>}
-            <Grid item>
-              <Fab color="primary"
-                   aria-label="delete"
-                   size="medium"
-                   onClick={handleEditPool}
-                   disabled={isLoading()}>
-                <EditIcon/>
-              </Fab>
-            </Grid>
-          </>}
-          <Grid item>
-            <StreamingStatus
-              pool={data.pool}
-              streamIdUpdated={setMyStreamId}
-              disabled={!isOpenTokSessionConnected || isLoading()}
-            />
-          </Grid>
-          <Grid item>
-            <Typography component="h1" variant="h3" color="textPrimary" gutterBottom>
-              {data.pool.name}
-            </Typography>
-          </Grid>
-        </Grid>
-        {data.pool.streams && renderStreams(data.pool.streams)}
-      </Container>}
+        <Switch>
+          <AuthenticatedRoute path={`${match.path}/start`}>
+            {renderPoolHeader(true)}
+          </AuthenticatedRoute>
+          <Route path={match.path}>
+            {renderPoolHeader(false)}
+          </Route>
+        </Switch>
+        {renderPoolStreams()}
+      </Container>
     </>
   )
 }

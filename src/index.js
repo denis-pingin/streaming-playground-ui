@@ -14,6 +14,7 @@ import "typeface-roboto";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import {CognitoAccessToken, CognitoIdToken, CognitoRefreshToken} from "amazon-cognito-identity-js";
 import {Credentials} from "@aws-amplify/core";
+import {SnackbarProvider} from "notistack";
 
 initSentry();
 
@@ -23,7 +24,6 @@ if (process.env.REACT_APP_STAGE === "offline") {
 
   Credentials.get = () => Promise.resolve("pizza");
   Auth.currentUserInfo = () => {
-    console.log("Auth.currentUserInfo");
     return Promise.resolve({
       id: "offlineContext_cognitoIdentityId",
       attributes: {
@@ -34,7 +34,6 @@ if (process.env.REACT_APP_STAGE === "offline") {
   }
 
   Auth.currentSession = () => {
-    console.log("Auth.currentSession");
     return Promise.resolve({
       getAccessToken: () => new CognitoAccessToken({AccessToken: "testAccessToken"}),
       getIdToken: () => new CognitoIdToken({IdToken: "testIdToken"}),
@@ -46,7 +45,7 @@ if (process.env.REACT_APP_STAGE === "offline") {
 
 Amplify.configure({
   Auth: {
-    mandatorySignIn: true,
+    mandatorySignIn: false,
     region: config.cognito.REGION,
     userPoolId: config.cognito.USER_POOL_ID,
     identityPoolId: config.cognito.IDENTITY_POOL_ID,
@@ -76,13 +75,15 @@ Amplify.configure({
 ReactDOM.render(
   <MuiThemeProvider theme={theme}>
     <CssBaseline/>
-    <Router>
-      <AuthContextProvider>
-        <OpenTokContextProvider>
-          <App/>
-        </OpenTokContextProvider>
-      </AuthContextProvider>
-    </Router>
+    <SnackbarProvider maxSnack={4}>
+      <Router>
+        <AuthContextProvider>
+          <OpenTokContextProvider>
+            <App/>
+          </OpenTokContextProvider>
+        </AuthContextProvider>
+      </Router>
+    </SnackbarProvider>
   </MuiThemeProvider>,
   document.getElementById('root')
 );

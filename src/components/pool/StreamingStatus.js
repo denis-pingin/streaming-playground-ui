@@ -13,6 +13,7 @@ import {
   StopStreamingMutation,
   UpdateStreamOpenTokStreamIdMutation
 } from "../../graphql/stream";
+import {useHistory, useRouteMatch} from "react-router-dom";
 
 const useStyles = makeStyles((theme) => ({
   videoPreview: {
@@ -27,8 +28,10 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function StreamingStatus({pool, disabled, streamIdUpdated, ...props}) {
+export default function StreamingStatus({pool, disabled, start, streamIdUpdated, ...props}) {
   const classes = useStyles();
+  const match = useRouteMatch();
+  const history = useHistory();
   const {enqueueSnackbar} = useSnackbar();
   const {getUserInfo} = useAuthContext();
   const {openTokStartPublishing, openTokStopPublishing, openTokIsPublishing} = useOpenTokContext();
@@ -127,6 +130,27 @@ export default function StreamingStatus({pool, disabled, streamIdUpdated, ...pro
   }, []);
 
   useEffect(() => {
+    async function init() {
+      if (start) {
+        console.log("Starting streaming");
+        const currentStreamId = getCurrentStreamId();
+        if (currentStreamId) {
+          throw new Error("Already streaming");
+        }
+
+        await startStreaming({
+          variables: {
+            poolId: pool.poolId,
+            name: getUserInfo().attributes.name
+          }
+        });
+      }
+    }
+
+    init();
+  }, [start])
+
+  useEffect(() => {
     function handleResize() {
       setWindowDimensions({
         height: window.innerHeight,
@@ -140,32 +164,23 @@ export default function StreamingStatus({pool, disabled, streamIdUpdated, ...pro
     }
   });
 
-  function handleStartStreaming() {
-    const currentStreamId = getCurrentStreamId();
-    if (currentStreamId) {
-      throw new Error("Already streaming");
-    }
-
-    return startStreaming({
-      variables: {
-        poolId: pool.poolId,
-        name: getUserInfo().attributes.name
-      }
-    });
+  async function handleStartStreaming() {
+    history.push(`${match.url}/start`);
   }
 
-  function handleStopStreaming() {
+  async function handleStopStreaming() {
     const currentStreamId = getCurrentStreamId();
     if (!currentStreamId) {
       throw new Error("Not streaming");
     }
 
-    return stopStreaming({
+    await stopStreaming({
       variables: {
         poolId: pool.poolId,
         streamId: currentStreamId
       }
     });
+    history.push(`/pools/${pool.poolId}`);
   }
 
   function getPreviewStyle(windowDimensions, videoDimensions) {

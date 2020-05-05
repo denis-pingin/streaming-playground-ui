@@ -1,12 +1,12 @@
 import React, {useEffect, useState} from "react";
-import {useHistory} from "react-router-dom";
+import {useHistory, useLocation} from "react-router-dom";
 import {onError} from "./libs/errorLib";
 import {useAuthContext} from "./contexts/AuthContext";
 import Box from "@material-ui/core/Box";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import Bar from "./components/common/Bar";
 import Routes from "./Routes";
-import {SnackbarProvider} from 'notistack';
+import {SnackbarProvider, useSnackbar} from 'notistack';
 import Loading from "./components/common/Loading";
 import {ApolloProvider} from "react-apollo";
 import {SubscriptionClient} from "subscriptions-transport-ws";
@@ -21,6 +21,8 @@ import aws4 from "@aws-amplify/core/lib/Signer";
 
 function App() {
   const history = useHistory();
+  const {pathname, search} = useLocation();
+  const {enqueueSnackbar} = useSnackbar();
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const {login, logout} = useAuthContext();
   const [apolloClient, setApolloClient] = useState();
@@ -117,9 +119,13 @@ function App() {
     onLoad();
   }, []);
 
+  function handleLogin() {
+    history.push(`/login?redirect=${pathname}${search}`)
+  }
+
   async function handleLogout() {
-    logout();
-    history.push("/login");
+    await logout();
+    enqueueSnackbar("Successfully logged out");
   }
 
   return (
@@ -127,13 +133,11 @@ function App() {
       {apolloClient &&
       <ApolloProvider client={apolloClient}>
         <ErrorBoundary>
-          <SnackbarProvider maxSnack={4}>
-            <Bar logout={handleLogout}/>
-            {isAuthenticating && <Loading/>}
-            {!isAuthenticating && <Box my={2}>
-              <Routes/>
-            </Box>}
-          </SnackbarProvider>
+          <Bar login={handleLogin} logout={handleLogout}/>
+          {isAuthenticating && <Loading/>}
+          {!isAuthenticating && <Box my={2}>
+            <Routes/>
+          </Box>}
         </ErrorBoundary>
       </ApolloProvider>}
     </>

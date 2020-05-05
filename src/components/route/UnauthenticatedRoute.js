@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import {Redirect, Route} from "react-router-dom";
 import {useAuthContext} from "../../contexts/AuthContext";
 
@@ -19,11 +19,24 @@ function querystring(name, url = window.location.href) {
 }
 
 export default function UnauthenticatedRoute({ children, ...rest }) {
-  const { isAuthenticated } = useAuthContext();
+  const {isAuthenticated, onAuthenticationUpdated, offAuthenticationUpdated} = useAuthContext();
+  const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   const redirect = querystring("redirect");
+
+  function handleAuthenticationUpdated(isAuthenticated) {
+    setLoggedIn(isAuthenticated);
+  }
+
+  useEffect(() => {
+    onAuthenticationUpdated(handleAuthenticationUpdated);
+    return function cleanup() {
+      offAuthenticationUpdated(handleAuthenticationUpdated);
+    }
+  }, []);
+
   return (
     <Route {...rest}>
-      {!isAuthenticated() ? (
+      {!loggedIn ? (
         children
       ) : (
         <Redirect to={redirect === "" || redirect === null ? "/" : redirect} />

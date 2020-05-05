@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {useAuthContext} from "../../contexts/AuthContext";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -29,10 +28,8 @@ const useStyles = makeStyles((theme) => ({
 
 export default function Pools() {
   const classes = useStyles();
-  const {isAuthenticated} = useAuthContext();
   const [newPoolDialogOpen, setNewPoolDialogOpen] = useState(false);
   const {loading, error, data, subscribeToMore, refetch} = useQuery(GetPoolsQuery, {
-    skip: !isAuthenticated(),
     fetchPolicy: "network-only"
   });
 
@@ -41,7 +38,7 @@ export default function Pools() {
     subscribeToMore({
       document: PoolCreatedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
-        console.log("POOL_CREATED_SUBSCRIPTION", prevData, subscriptionData)
+        console.log("PoolCreatedSubscription", prevData, subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
         }
@@ -55,7 +52,7 @@ export default function Pools() {
     subscribeToMore({
       document: PoolUpdatedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
-        console.log("POOL_UPDATED_SUBSCRIPTION", prevData, subscriptionData)
+        console.log("PoolUpdatedSubscription", prevData, subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
         }
@@ -68,7 +65,7 @@ export default function Pools() {
     subscribeToMore({
       document: PoolDeletedSubscription,
       updateQuery: (prevData, { subscriptionData }) => {
-        console.log("POOL_DELETED_SUBSCRIPTION", prevData, subscriptionData)
+        console.log("PoolDeletedSubscription", prevData, subscriptionData)
         if (!subscriptionData.data) {
           return prevData;
         }
@@ -133,7 +130,7 @@ export default function Pools() {
       </Grid>
       {loading && <Loading/>}
       {!loading && error && <Error error={error}/>}
-      {!loading && !error && data.pools && renderPoolsList(data.pools)}
+      {!loading && !error && renderPoolsList(data.pools)}
     </Container>
   );
 }

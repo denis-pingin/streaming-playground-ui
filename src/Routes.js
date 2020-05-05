@@ -15,25 +15,22 @@ export default function Routes() {
   return (
     <Switch>
       <Route exact path="/">
-        <Home />
+        <Home/>
       </Route>
       <UnauthenticatedRoute exact path="/login">
-        <Login />
+        <Login/>
       </UnauthenticatedRoute>
       <UnauthenticatedRoute exact path="/signup">
-        <Signup />
+        <Signup/>
       </UnauthenticatedRoute>
       <AuthenticatedRoute exact path="/settings">
-        <Settings />
+        <Settings/>
       </AuthenticatedRoute>
-      <AuthenticatedRoute exact path="/pools/:poolId">
-        <Pool />
-      </AuthenticatedRoute>
-      {/*<AuthenticatedRoute exact path="/pools/:poolId/streams/:streamId">*/}
-      {/*  <Stream />*/}
-      {/*</AuthenticatedRoute>*/}
+      <Route path="/pools/:poolId">
+        <Pool/>
+      </Route>
       <Route>
-        <NotFound />
+        <NotFound/>
       </Route>
     </Switch>
   );

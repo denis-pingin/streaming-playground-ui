@@ -11,7 +11,7 @@ import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Checkbox from "@material-ui/core/Checkbox";
 import Button from "@material-ui/core/Button";
 import Grid from "@material-ui/core/Grid";
-import {Link as RouterLink} from "react-router-dom";
+import {Link as RouterLink, useLocation} from "react-router-dom";
 import Link from "@material-ui/core/Link";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
@@ -38,6 +38,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function Login() {
   const classes = useStyles();
+  const {search} = useLocation();
   const {login} = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [fields, handleFieldChange] = useFormFields({
@@ -115,12 +116,12 @@ export default function Login() {
           </Button>
           <Grid container>
             <Grid item xs>
-              <Link component={RouterLink} to="/recover" variant="body2" color="textSecondary">
+              <Link component={RouterLink} to={`/recover${search}`} variant="body2" color="textSecondary">
                 Forgot password?
               </Link>
             </Grid>
             <Grid item>
-              <Link component={RouterLink} to="/signup" variant="body2" color="textSecondary">
+              <Link component={RouterLink} to={`/signup${search}`} variant="body2" color="textSecondary">
                 {"Don't have an account? Sign Up"}
               </Link>
             </Grid>

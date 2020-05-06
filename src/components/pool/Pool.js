@@ -75,7 +75,7 @@ export default function Pool() {
   });
 
   function handleAuthenticationUpdated(isAuthenticated, userInfo) {
-    setUserId(isAuthenticated && userInfo.id);
+    setUserId(isAuthenticated && userInfo.id)
   }
 
   useEffect(() => {
@@ -121,7 +121,6 @@ export default function Pool() {
         width: window.innerWidth
       });
     }
-
     window.addEventListener('resize', handleResize)
     return function cleanup() {
       window.removeEventListener('resize', handleResize);

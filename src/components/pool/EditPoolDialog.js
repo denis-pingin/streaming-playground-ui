@@ -21,7 +21,6 @@ export default function EditPoolDialog({open, openStateChanged, pool}) {
     function init() {
       setIsOpen(open);
     }
-
     init();
   });
 

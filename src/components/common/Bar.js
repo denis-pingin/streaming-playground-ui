@@ -54,14 +54,10 @@ export default function Bar({login, logout}) {
     setAnchorElement(null);
   }
 
-  function handleAuthenticationUpdated(isAuthenticated) {
-    setLoggedIn(isAuthenticated);
-  }
-
   useEffect(() => {
-    onAuthenticationUpdated(handleAuthenticationUpdated);
+    onAuthenticationUpdated(setLoggedIn);
     return function cleanup() {
-      offAuthenticationUpdated(handleAuthenticationUpdated);
+      offAuthenticationUpdated(setLoggedIn);
     }
   }, []);
 

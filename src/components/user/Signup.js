@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import {Auth} from "aws-amplify";
-import {Link as RouterLink, useHistory, useLocation} from "react-router-dom";
+import {Link as RouterLink, useLocation} from "react-router-dom";
 import {useFormFields} from "../../libs/hooksLib";
 import {onError} from "../../libs/errorLib";
 import {useAuthContext} from "../../contexts/AuthContext";
@@ -44,7 +44,6 @@ export default function Signup() {
     confirmPassword: "",
     confirmationCode: "",
   });
-  const history = useHistory();
   const [newUser, setNewUser] = useState(null);
   const {login} = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);

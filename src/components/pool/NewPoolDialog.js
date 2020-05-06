@@ -31,7 +31,6 @@ export default function NewPoolDialog({open, openStateChanged}) {
     function init() {
       setIsOpen(open);
     }
-
     init();
   });
 

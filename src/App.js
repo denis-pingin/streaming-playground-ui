@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
 import {onError} from "./libs/errorLib";
 import {useAuthContext} from "./contexts/AuthContext";
@@ -6,7 +6,7 @@ import Box from "@material-ui/core/Box";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import Bar from "./components/common/Bar";
 import Routes from "./Routes";
-import {SnackbarProvider, useSnackbar} from 'notistack';
+import {useSnackbar} from 'notistack';
 import Loading from "./components/common/Loading";
 import {ApolloProvider} from "react-apollo";
 import {SubscriptionClient} from "subscriptions-transport-ws";
@@ -21,11 +21,12 @@ import aws4 from "@aws-amplify/core/lib/Signer";
 
 function App() {
   const history = useHistory();
-  const {pathname, search} = useLocation();
+  const location = useLocation();
   const {enqueueSnackbar} = useSnackbar();
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const {login, logout} = useAuthContext();
   const [apolloClient, setApolloClient] = useState();
+  const locationRef = useRef(location);
 
   function init() {
     const wsClient = new SubscriptionClient(
@@ -108,19 +109,22 @@ function App() {
         await login();
         init();
       } catch (e) {
-        if (e !== 'No current user') {
-          onError(e);
-        }
+        onError(e);
       }
-
       setIsAuthenticating(false);
     }
-
     onLoad();
   }, []);
 
+  useEffect(() => {
+    async function onLoad() {
+      locationRef.current = location;
+    }
+    onLoad();
+  }, [location]);
+
   function handleLogin() {
-    history.push(`/login?redirect=${pathname}${search}`)
+    history.push(`/login?redirect=${locationRef.current.pathname}${locationRef.current.search}`)
   }
 
   async function handleLogout() {

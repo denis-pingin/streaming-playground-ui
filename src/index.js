@@ -51,38 +51,19 @@ Amplify.configure({
     identityPoolId: config.cognito.IDENTITY_POOL_ID,
     userPoolWebClientId: config.cognito.APP_CLIENT_ID
   },
-  // Storage: {
-  //   region: config.s3.REGION,
-  //   bucket: config.s3.BUCKET,
-  //   identityPoolId: config.cognito.IDENTITY_POOL_ID
-  // },
-  // API: {
-  //   endpoints: [
-  //     {
-  //       name: "pools",
-  //       endpoint: config.apiGateway.URL + "/pools",
-  //       region: config.apiGateway.REGION
-  //     },
-  //     {
-  //       name: "user",
-  //       endpoint: config.apiGateway.URL + "/user",
-  //       region: config.apiGateway.REGION
-  //     },
-  //   ]
-  // }
 });
 
 ReactDOM.render(
   <MuiThemeProvider theme={theme}>
     <CssBaseline/>
     <SnackbarProvider maxSnack={4}>
-      <Router>
-        <AuthContextProvider>
-          <OpenTokContextProvider>
+      <AuthContextProvider>
+        <OpenTokContextProvider>
+          <Router>
             <App/>
-          </OpenTokContextProvider>
-        </AuthContextProvider>
-      </Router>
+          </Router>
+        </OpenTokContextProvider>
+      </AuthContextProvider>
     </SnackbarProvider>
   </MuiThemeProvider>,
   document.getElementById('root')

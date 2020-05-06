@@ -157,7 +157,6 @@ export default function StreamingStatus({pool, disabled, start, streamIdUpdated,
         width: window.innerWidth
       });
     }
-
     window.addEventListener('resize', handleResize)
     return function cleanup() {
       window.removeEventListener('resize', handleResize);

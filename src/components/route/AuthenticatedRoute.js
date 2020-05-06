@@ -7,14 +7,10 @@ export default function AuthenticatedRoute({children, ...rest}) {
   const {isAuthenticated, onAuthenticationUpdated, offAuthenticationUpdated} = useAuthContext();
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
 
-  function handleAuthenticationUpdated(isAuthenticated) {
-    setLoggedIn(isAuthenticated);
-  }
-
   useEffect(() => {
-    onAuthenticationUpdated(handleAuthenticationUpdated);
+    onAuthenticationUpdated(setLoggedIn);
     return function cleanup() {
-      offAuthenticationUpdated(handleAuthenticationUpdated);
+      offAuthenticationUpdated(setLoggedIn);
     }
   }, []);
 

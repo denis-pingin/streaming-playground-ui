@@ -26,21 +26,12 @@ const useAuthContext = () => {
   const [authContext, setAuthContext] = useContext(AuthContext);
   const authContextRef = useRef(authContext)
 
-  function getAuthContext() {
-    return authContextRef.current;
-  }
-
-  function updateAuthContext(value) {
-    setAuthContext(value);
-    authContextRef.current = value;
-  }
-
   function getUserInfo() {
-    return getAuthContext().userInfo;
+    return authContextRef.current.userInfo;
   }
 
   function isAuthenticated() {
-    return getAuthContext().isAuthenticated;
+    return authContextRef.current.isAuthenticated;
   }
 
   function onAuthenticationUpdated(callback) {
@@ -56,16 +47,17 @@ const useAuthContext = () => {
   }
 
   function getCallbacks() {
-    return getAuthContext().callbacks || new Set();
+    return authContextRef.current.callbacks || new Set();
   }
 
   function setCallbacks(callbacks) {
-    updateAuthContext({...getAuthContext(), callbacks: callbacks});
+    authContextRef.current.callbacks = callbacks;
+    setAuthContext(authContext => ({...authContext, callbacks: callbacks}));
   }
 
   function invokeCallbacks() {
-    const authContext = getAuthContext();
-    getCallbacks().forEach(callback => callback(authContext.isAuthenticated, authContext.userInfo));
+    getCallbacks().forEach(callback =>
+      callback(authContextRef.current.isAuthenticated, authContextRef.current.userInfo));
   }
 
   async function login() {
@@ -74,21 +66,28 @@ const useAuthContext = () => {
     const userInfo = await Auth.currentUserInfo()
     console.log("Logged in:", userInfo);
 
-    updateAuthContext({
-      ...getAuthContext(),
+    authContextRef.current.isAuthenticated = userInfo != null;
+    authContextRef.current.userInfo = userInfo;
+    setAuthContext(authContext => ({
+      ...authContext,
       isAuthenticated: userInfo != null,
       userInfo: userInfo
-    });
+    }));
+
     invokeCallbacks();
   }
 
   async function logout() {
     await Auth.signOut();
-    updateAuthContext({
-      ...getAuthContext(),
+
+    authContextRef.current.isAuthenticated = false;
+    authContextRef.current.userInfo = null;
+    setAuthContext(authContext => ({
+      ...authContext,
       isAuthenticated: false,
       userInfo: null
-    });
+    }));
+
     invokeCallbacks();
   }
 

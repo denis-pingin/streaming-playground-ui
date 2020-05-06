@@ -23,14 +23,10 @@ export default function UnauthenticatedRoute({ children, ...rest }) {
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   const redirect = querystring("redirect");
 
-  function handleAuthenticationUpdated(isAuthenticated) {
-    setLoggedIn(isAuthenticated);
-  }
-
   useEffect(() => {
-    onAuthenticationUpdated(handleAuthenticationUpdated);
+    onAuthenticationUpdated(setLoggedIn);
     return function cleanup() {
-      offAuthenticationUpdated(handleAuthenticationUpdated);
+      offAuthenticationUpdated(setLoggedIn);
     }
   }, []);
 
